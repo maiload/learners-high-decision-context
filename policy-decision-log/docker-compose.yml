@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: opa-log-postgres
+    restart: unless-stopped
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: opa_logs
+      POSTGRES_USER: opa
+      POSTGRES_PASSWORD: opa
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
