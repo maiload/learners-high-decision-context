@@ -1,6 +1,6 @@
-package com.example.opa.policydecisionlog.filter;
+package com.example.opa.policydecisionlog.command.filter;
 
-import com.example.opa.policydecisionlog.config.GzipProperties;
+import com.example.opa.policydecisionlog.shared.config.GzipProperties;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ReadListener;
 import jakarta.servlet.ServletException;
@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -19,6 +20,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import java.util.zip.GZIPInputStream;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class GzipDecompressionFilter extends OncePerRequestFilter {
@@ -38,12 +40,18 @@ public class GzipDecompressionFilter extends OncePerRequestFilter {
 
         if (contentEncoding != null && contentEncoding.contains("gzip")) {
             long compressedSize = request.getContentLengthLong();
+            log.debug("Gzip request received: compressedSize={} bytes", compressedSize);
+
             if (compressedSize > gzipProperties.maxCompressedSize()) {
+                log.warn("Compressed size {} exceeds limit {} bytes", compressedSize, gzipProperties.maxCompressedSize());
                 response.sendError(HttpServletResponse.SC_REQUEST_ENTITY_TOO_LARGE,
                         "Compressed size exceeds limit: " + gzipProperties.maxCompressedSize() + " bytes");
                 return;
             }
-            filterChain.doFilter(new GzipRequestWrapper(request, gzipProperties.maxDecompressedSize()), response);
+
+            GzipRequestWrapper wrapper = new GzipRequestWrapper(request, gzipProperties.maxDecompressedSize());
+            log.debug("Decompressed request: {} bytes -> {} bytes", compressedSize, wrapper.getContentLengthLong());
+            filterChain.doFilter(wrapper, response);
         } else {
             filterChain.doFilter(request, response);
         }

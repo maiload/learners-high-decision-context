@@ -1,4 +1,4 @@
-package com.example.opa.policydecisionlog.config;
+package com.example.opa.policydecisionlog.shared.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.util.StringUtils;
