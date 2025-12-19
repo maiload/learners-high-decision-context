@@ -6,7 +6,7 @@ Accepted
 ---
 
 ### Context
-기존 Zero Trust POC에서는 OPA(Open Policy Agent)가 남기는 decision log를 그대로 저장하고,  
+기존 Zero Trust POC에서는 OPA(Open Policy Agent)가 남기는 decision log를 기반으로 데이터를 저장하고,
 이를 조회하는 방식으로 정책 디버깅을 진행
 
 OPA decision log는 정책 평가 엔진 관점에서 설계된 로그로,  
