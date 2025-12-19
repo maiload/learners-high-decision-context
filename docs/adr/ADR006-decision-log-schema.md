@@ -15,6 +15,8 @@ Accepted
 ### Decision
 `decision_logs` 한 테이블을 메인:
 - 원본 decision log는 `raw`(JSONB)에 저장
+  - PostgreSQL에서는 대부분의 경우 jsonb가 json보다 성능과 확장성 측면에서 우수함
+  - [JSON vs. JSONB in PostgreSQL: A Complete Comparison](https://www.dbvis.com/thetable/json-vs-jsonb-in-postgresql-a-complete-comparison/)
 - 운영/디버깅에서 자주 쓰는 필드만 컬럼으로 분리
 
 컨텍스트(Context)는 애플리케이션 레이어에서 생성하며,
