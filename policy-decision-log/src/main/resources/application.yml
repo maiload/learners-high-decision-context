@@ -12,3 +12,9 @@ spring:
       hibernate:
         format_sql: true
         show_sql: false
+
+opa:
+  gzip:
+    path: /logs
+    max-compressed-size: 32768      # 32KB
+    max-decompressed-size: 1048576  # 1MB
