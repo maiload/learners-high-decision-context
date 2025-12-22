@@ -10,6 +10,8 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -40,27 +42,27 @@ class CommandToEntityMapperTest {
             UUID userPolicyId = UUID.randomUUID();
             OffsetDateTime timestamp = OffsetDateTime.now();
 
-            JsonNode result = jsonMapper.valueToTree(java.util.Map.of(
+            JsonNode result = jsonMapper.valueToTree(Map.of(
                     "allow", true,
-                    "access_key", java.util.Map.of(
+                    "access_key", Map.of(
                             "realm_id", realmId.toString(),
                             "user_id", userId.toString(),
                             "user_policy_id", userPolicyId.toString()
                     ),
-                    "violations", java.util.List.of(
-                            java.util.Map.of("id", "v1"),
-                            java.util.Map.of("id", "v2")
+                    "violations", List.of(
+                            Map.of("id", "v1"),
+                            Map.of("id", "v2")
                     )
             ));
 
-            JsonNode input = jsonMapper.valueToTree(java.util.Map.of(
-                    "agent_data", java.util.Map.of(
-                            "data", java.util.Map.of("os_type", "WINDOWS")
+            JsonNode input = jsonMapper.valueToTree(Map.of(
+                    "agent_data", Map.of(
+                            "data", Map.of("os_type", "WINDOWS")
                     )
             ));
 
-            JsonNode bundles = jsonMapper.valueToTree(java.util.Map.of("bundle1", "v1"));
-            JsonNode raw = jsonMapper.valueToTree(java.util.Map.of("raw", "data"));
+            JsonNode bundles = jsonMapper.valueToTree(Map.of("bundle1", "v1"));
+            JsonNode raw = jsonMapper.valueToTree(Map.of("raw", "data"));
 
             DecisionLogIngestCommand command = DecisionLogIngestCommand.of(
                     decisionId, timestamp, "/policy/main", "user@example.com", 1L,
@@ -128,7 +130,7 @@ class CommandToEntityMapperTest {
         @DisplayName("allow가 false인 result가 주어지면 overallAllow가 false이다")
         void givenResultWithAllowFalse_whenToEntity_thenOverallAllowIsFalse() {
             // given
-            JsonNode result = jsonMapper.valueToTree(java.util.Map.of("allow", false));
+            JsonNode result = jsonMapper.valueToTree(Map.of("allow", false));
 
             DecisionLogIngestCommand command = DecisionLogIngestCommand.of(
                     UUID.randomUUID(), OffsetDateTime.now(), "/policy/main",
@@ -146,8 +148,8 @@ class CommandToEntityMapperTest {
         @DisplayName("빈 violations 배열이 주어지면 violationCount가 0이다")
         void givenEmptyViolations_whenToEntity_thenViolationCountIsZero() {
             // given
-            JsonNode result = jsonMapper.valueToTree(java.util.Map.of(
-                    "violations", java.util.List.of()
+            JsonNode result = jsonMapper.valueToTree(Map.of(
+                    "violations", List.of()
             ));
 
             DecisionLogIngestCommand command = DecisionLogIngestCommand.of(
@@ -166,8 +168,8 @@ class CommandToEntityMapperTest {
         @DisplayName("잘못된 UUID 형식이 주어지면 null로 매핑된다")
         void givenInvalidUuidFormat_whenToEntity_thenReturnsNull() {
             // given
-            JsonNode result = jsonMapper.valueToTree(java.util.Map.of(
-                    "access_key", java.util.Map.of(
+            JsonNode result = jsonMapper.valueToTree(Map.of(
+                    "access_key", Map.of(
                             "realm_id", "invalid-uuid"
                     )
             ));

@@ -10,6 +10,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.time.OffsetDateTime;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -36,9 +37,9 @@ class RequestToCommandMapperTest {
             UUID decisionId = UUID.randomUUID();
             UUID labelId = UUID.randomUUID();
             OffsetDateTime timestamp = OffsetDateTime.now();
-            JsonNode bundles = jsonMapper.valueToTree(java.util.Map.of("bundle1", "v1"));
-            JsonNode input = jsonMapper.valueToTree(java.util.Map.of("key", "value"));
-            JsonNode result = jsonMapper.valueToTree(java.util.Map.of("allow", true));
+            JsonNode bundles = jsonMapper.valueToTree(Map.of("bundle1", "v1"));
+            JsonNode input = jsonMapper.valueToTree(Map.of("key", "value"));
+            JsonNode result = jsonMapper.valueToTree(Map.of("allow", true));
 
             DecisionLogIngestRequest request = new DecisionLogIngestRequest(
                     decisionId, timestamp, "/policy/main", "user@example.com", 1L,
