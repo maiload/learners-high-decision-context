@@ -19,6 +19,9 @@ opa:
     max-compressed-size: 32768      # 32KB
     max-decompressed-size: 1048576  # 1MB
 
+springdoc:
+  show-actuator: true
+
 logging:
   level:
     root: info
