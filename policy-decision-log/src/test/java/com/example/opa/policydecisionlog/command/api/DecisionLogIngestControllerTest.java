@@ -1,9 +1,9 @@
 package com.example.opa.policydecisionlog.command.api;
 
+import com.example.opa.policydecisionlog.command.api.mapper.RequestToCommandMapper;
 import com.example.opa.policydecisionlog.command.app.DecisionLogCommandService;
-import com.example.opa.policydecisionlog.command.app.model.IngestDecisionLogCommand;
+import com.example.opa.policydecisionlog.command.app.dto.DecisionLogIngestCommand;
 import com.example.opa.policydecisionlog.shared.config.GzipProperties;
-import com.example.opa.policydecisionlog.shared.mapper.ApiToCommandMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,7 +32,7 @@ class DecisionLogIngestControllerTest {
     private DecisionLogCommandService commandService;
 
     @MockitoBean
-    private ApiToCommandMapper apiToCommandMapper;
+    private RequestToCommandMapper requestToCommandMapper;
 
     @MockitoBean
     private GzipProperties gzipProperties;
@@ -61,10 +61,10 @@ class DecisionLogIngestControllerTest {
                 ]
                 """.formatted(decisionId, UUID.randomUUID());
 
-        given(apiToCommandMapper.toIngestDecisionLogCommand(any()))
-                .willReturn(IngestDecisionLogCommand.of(
+        given(requestToCommandMapper.toCommand(any()))
+                .willReturn(DecisionLogIngestCommand.of(
                         decisionId, OffsetDateTime.now(), "/policy/main",
-                        "user@example.com", 12345L, null, null, null, null, null, null
+                        "user@example.com", 1L, null, null, null, null, null, null
                 ));
 
         // when
@@ -114,8 +114,8 @@ class DecisionLogIngestControllerTest {
                 ]
                 """.formatted(decisionId1, decisionId2);
 
-        given(apiToCommandMapper.toIngestDecisionLogCommand(any()))
-                .willReturn(IngestDecisionLogCommand.of(
+        given(requestToCommandMapper.toCommand(any()))
+                .willReturn(DecisionLogIngestCommand.of(
                         UUID.randomUUID(), OffsetDateTime.now(), "/policy/main",
                         null, null, null, null, null, null, null, null
                 ));
@@ -127,6 +127,6 @@ class DecisionLogIngestControllerTest {
                 .andExpect(status().isNoContent());
 
         // then
-        then(apiToCommandMapper).should(times(2)).toIngestDecisionLogCommand(any());
+        then(requestToCommandMapper).should(times(2)).toCommand(any());
     }
 }

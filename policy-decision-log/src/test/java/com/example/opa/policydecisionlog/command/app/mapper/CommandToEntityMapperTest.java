@@ -1,7 +1,7 @@
-package com.example.opa.policydecisionlog.shared.mapper;
+package com.example.opa.policydecisionlog.command.app.mapper;
 
-import com.example.opa.policydecisionlog.command.app.model.IngestDecisionLogCommand;
-import com.example.opa.policydecisionlog.command.infra.model.DecisionLogRow;
+import com.example.opa.policydecisionlog.command.app.dto.DecisionLogIngestCommand;
+import com.example.opa.policydecisionlog.command.infra.model.DecisionLog;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -14,24 +14,24 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class CommandToRowMapperTest {
+class CommandToEntityMapperTest {
 
-    private CommandToRowMapper mapper;
+    private CommandToEntityMapper mapper;
     private JsonMapper jsonMapper;
 
     @BeforeEach
     void setUp() {
         jsonMapper = JsonMapper.builder().build();
-        mapper = new CommandToRowMapper(jsonMapper);
+        mapper = new CommandToEntityMapper(jsonMapper);
     }
 
     @Nested
-    @DisplayName("toDecisionLogRow")
-    class ToDecisionLogRow {
+    @DisplayName("toEntity")
+    class ToEntity {
 
         @Test
-        @DisplayName("모든 필드가 있는 Command가 주어지면 DecisionLogRow로 정상 매핑된다")
-        void givenCommandWithAllFields_whenToDecisionLogRow_thenMapsCorrectly() {
+        @DisplayName("모든 필드가 있는 Command가 주어지면 DecisionLog로 정상 매핑된다")
+        void givenCommandWithAllFields_whenToEntity_thenMapsCorrectly() {
             // given
             UUID decisionId = UUID.randomUUID();
             UUID opaInstanceId = UUID.randomUUID();
@@ -62,109 +62,109 @@ class CommandToRowMapperTest {
             JsonNode bundles = jsonMapper.valueToTree(java.util.Map.of("bundle1", "v1"));
             JsonNode raw = jsonMapper.valueToTree(java.util.Map.of("raw", "data"));
 
-            IngestDecisionLogCommand command = IngestDecisionLogCommand.of(
+            DecisionLogIngestCommand command = DecisionLogIngestCommand.of(
                     decisionId, timestamp, "/policy/main", "user@example.com", 1L,
                     opaInstanceId, "1.0.0", bundles, input, result, raw
             );
 
             // when
-            DecisionLogRow row = mapper.toDecisionLogRow(command);
+            DecisionLog entity = mapper.toEntity(command);
 
             // then
-            assertThat(row.getDecisionId()).isEqualTo(decisionId);
-            assertThat(row.getTs()).isEqualTo(timestamp);
-            assertThat(row.getPath()).isEqualTo("/policy/main");
-            assertThat(row.isOverallAllow()).isTrue();
-            assertThat(row.getRequestedBy()).isEqualTo("user@example.com");
-            assertThat(row.getReqId()).isEqualTo(1L);
-            assertThat(row.getOpaInstanceId()).isEqualTo(opaInstanceId);
-            assertThat(row.getOpaVersion()).isEqualTo("1.0.0");
-            assertThat(row.getRealmId()).isEqualTo(realmId);
-            assertThat(row.getUserId()).isEqualTo(userId);
-            assertThat(row.getUserPolicyId()).isEqualTo(userPolicyId);
-            assertThat(row.getOsType()).isEqualTo("WINDOWS");
-            assertThat(row.getViolationCount()).isEqualTo(2);
-            assertThat(row.getBundles()).containsEntry("bundle1", "v1");
-            assertThat(row.getRaw()).containsEntry("raw", "data");
+            assertThat(entity.getDecisionId()).isEqualTo(decisionId);
+            assertThat(entity.getTs()).isEqualTo(timestamp);
+            assertThat(entity.getPath()).isEqualTo("/policy/main");
+            assertThat(entity.isOverallAllow()).isTrue();
+            assertThat(entity.getRequestedBy()).isEqualTo("user@example.com");
+            assertThat(entity.getReqId()).isEqualTo(1L);
+            assertThat(entity.getOpaInstanceId()).isEqualTo(opaInstanceId);
+            assertThat(entity.getOpaVersion()).isEqualTo("1.0.0");
+            assertThat(entity.getRealmId()).isEqualTo(realmId);
+            assertThat(entity.getUserId()).isEqualTo(userId);
+            assertThat(entity.getUserPolicyId()).isEqualTo(userPolicyId);
+            assertThat(entity.getOsType()).isEqualTo("WINDOWS");
+            assertThat(entity.getViolationCount()).isEqualTo(2);
+            assertThat(entity.getBundles()).containsEntry("bundle1", "v1");
+            assertThat(entity.getRaw()).containsEntry("raw", "data");
         }
 
         @Test
         @DisplayName("result가 null인 Command가 주어지면 기본값으로 매핑된다")
-        void givenCommandWithNullResult_whenToDecisionLogRow_thenMapsWithDefaults() {
+        void givenCommandWithNullResult_whenToEntity_thenMapsWithDefaults() {
             // given
-            IngestDecisionLogCommand command = IngestDecisionLogCommand.of(
+            DecisionLogIngestCommand command = DecisionLogIngestCommand.of(
                     UUID.randomUUID(), OffsetDateTime.now(), "/policy/main",
                     null, null, null, null, null, null, null, null
             );
 
             // when
-            DecisionLogRow row = mapper.toDecisionLogRow(command);
+            DecisionLog entity = mapper.toEntity(command);
 
             // then
-            assertThat(row.isOverallAllow()).isFalse();
-            assertThat(row.getRealmId()).isNull();
-            assertThat(row.getUserId()).isNull();
-            assertThat(row.getUserPolicyId()).isNull();
-            assertThat(row.getViolationCount()).isNull();
+            assertThat(entity.isOverallAllow()).isFalse();
+            assertThat(entity.getRealmId()).isNull();
+            assertThat(entity.getUserId()).isNull();
+            assertThat(entity.getUserPolicyId()).isNull();
+            assertThat(entity.getViolationCount()).isNull();
         }
 
         @Test
         @DisplayName("input이 null인 Command가 주어지면 osType이 null이다")
-        void givenCommandWithNullInput_whenToDecisionLogRow_thenOsTypeIsNull() {
+        void givenCommandWithNullInput_whenToEntity_thenOsTypeIsNull() {
             // given
-            IngestDecisionLogCommand command = IngestDecisionLogCommand.of(
+            DecisionLogIngestCommand command = DecisionLogIngestCommand.of(
                     UUID.randomUUID(), OffsetDateTime.now(), "/policy/main",
                     null, null, null, null, null, null, null, null
             );
 
             // when
-            DecisionLogRow row = mapper.toDecisionLogRow(command);
+            DecisionLog entity = mapper.toEntity(command);
 
             // then
-            assertThat(row.getOsType()).isNull();
+            assertThat(entity.getOsType()).isNull();
         }
 
         @Test
         @DisplayName("allow가 false인 result가 주어지면 overallAllow가 false이다")
-        void givenResultWithAllowFalse_whenToDecisionLogRow_thenOverallAllowIsFalse() {
+        void givenResultWithAllowFalse_whenToEntity_thenOverallAllowIsFalse() {
             // given
             JsonNode result = jsonMapper.valueToTree(java.util.Map.of("allow", false));
 
-            IngestDecisionLogCommand command = IngestDecisionLogCommand.of(
+            DecisionLogIngestCommand command = DecisionLogIngestCommand.of(
                     UUID.randomUUID(), OffsetDateTime.now(), "/policy/main",
                     null, null, null, null, null, null, result, null
             );
 
             // when
-            DecisionLogRow row = mapper.toDecisionLogRow(command);
+            DecisionLog entity = mapper.toEntity(command);
 
             // then
-            assertThat(row.isOverallAllow()).isFalse();
+            assertThat(entity.isOverallAllow()).isFalse();
         }
 
         @Test
         @DisplayName("빈 violations 배열이 주어지면 violationCount가 0이다")
-        void givenEmptyViolations_whenToDecisionLogRow_thenViolationCountIsZero() {
+        void givenEmptyViolations_whenToEntity_thenViolationCountIsZero() {
             // given
             JsonNode result = jsonMapper.valueToTree(java.util.Map.of(
                     "violations", java.util.List.of()
             ));
 
-            IngestDecisionLogCommand command = IngestDecisionLogCommand.of(
+            DecisionLogIngestCommand command = DecisionLogIngestCommand.of(
                     UUID.randomUUID(), OffsetDateTime.now(), "/policy/main",
                     null, null, null, null, null, null, result, null
             );
 
             // when
-            DecisionLogRow row = mapper.toDecisionLogRow(command);
+            DecisionLog entity = mapper.toEntity(command);
 
             // then
-            assertThat(row.getViolationCount()).isZero();
+            assertThat(entity.getViolationCount()).isZero();
         }
 
         @Test
         @DisplayName("잘못된 UUID 형식이 주어지면 null로 매핑된다")
-        void givenInvalidUuidFormat_whenToDecisionLogRow_thenReturnsNull() {
+        void givenInvalidUuidFormat_whenToEntity_thenReturnsNull() {
             // given
             JsonNode result = jsonMapper.valueToTree(java.util.Map.of(
                     "access_key", java.util.Map.of(
@@ -172,16 +172,16 @@ class CommandToRowMapperTest {
                     )
             ));
 
-            IngestDecisionLogCommand command = IngestDecisionLogCommand.of(
+            DecisionLogIngestCommand command = DecisionLogIngestCommand.of(
                     UUID.randomUUID(), OffsetDateTime.now(), "/policy/main",
                     null, null, null, null, null, null, result, null
             );
 
             // when
-            DecisionLogRow row = mapper.toDecisionLogRow(command);
+            DecisionLog entity = mapper.toEntity(command);
 
             // then
-            assertThat(row.getRealmId()).isNull();
+            assertThat(entity.getRealmId()).isNull();
         }
     }
 }

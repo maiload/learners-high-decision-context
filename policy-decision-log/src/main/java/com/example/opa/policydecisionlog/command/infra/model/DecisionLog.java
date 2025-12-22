@@ -17,7 +17,7 @@ import java.util.UUID;
 @Table(name = "decision_logs")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class DecisionLogRow {
+public class DecisionLog {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -74,33 +74,33 @@ public class DecisionLogRow {
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
-    public static DecisionLogRow of(UUID decisionId, OffsetDateTime ts, String path, boolean overallAllow,
-                                    String requestedBy, Long reqId, UUID opaInstanceId, String opaVersion,
-                                    UUID realmId, UUID userId, UUID userPolicyId, String osType,
-                                    Map<String, Object> bundles, Integer violationCount, Map<String, Object> raw) {
-        DecisionLogRow row = new DecisionLogRow();
-        row.decisionId = decisionId;
-        row.ts = ts;
-        row.path = path;
-        row.overallAllow = overallAllow;
-        row.requestedBy = requestedBy;
-        row.reqId = reqId;
-        row.opaInstanceId = opaInstanceId;
-        row.opaVersion = opaVersion;
-        row.realmId = realmId;
-        row.userId = userId;
-        row.userPolicyId = userPolicyId;
-        row.osType = osType;
-        row.bundles = bundles;
-        row.violationCount = violationCount;
-        row.raw = raw;
-        return row;
+    public static DecisionLog of(UUID decisionId, OffsetDateTime ts, String path, boolean overallAllow,
+                                 String requestedBy, Long reqId, UUID opaInstanceId, String opaVersion,
+                                 UUID realmId, UUID userId, UUID userPolicyId, String osType,
+                                 Map<String, Object> bundles, Integer violationCount, Map<String, Object> raw) {
+        DecisionLog entity = new DecisionLog();
+        entity.decisionId = decisionId;
+        entity.ts = ts;
+        entity.path = path;
+        entity.overallAllow = overallAllow;
+        entity.requestedBy = requestedBy;
+        entity.reqId = reqId;
+        entity.opaInstanceId = opaInstanceId;
+        entity.opaVersion = opaVersion;
+        entity.realmId = realmId;
+        entity.userId = userId;
+        entity.userPolicyId = userPolicyId;
+        entity.osType = osType;
+        entity.bundles = bundles;
+        entity.violationCount = violationCount;
+        entity.raw = raw;
+        return entity;
     }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof DecisionLogRow that)) return false;
+        if (!(o instanceof DecisionLog that)) return false;
         return Objects.equals(decisionId, that.decisionId);
     }
 

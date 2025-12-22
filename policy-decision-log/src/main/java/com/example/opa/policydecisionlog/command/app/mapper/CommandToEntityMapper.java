@@ -1,12 +1,12 @@
-package com.example.opa.policydecisionlog.shared.mapper;
+package com.example.opa.policydecisionlog.command.app.mapper;
 
-import com.example.opa.policydecisionlog.command.app.model.IngestDecisionLogCommand;
-import com.example.opa.policydecisionlog.command.infra.model.DecisionLogRow;
+import com.example.opa.policydecisionlog.command.app.dto.DecisionLogIngestCommand;
+import com.example.opa.policydecisionlog.command.infra.model.DecisionLog;
 import lombok.RequiredArgsConstructor;
-import tools.jackson.core.type.TypeReference;
-import tools.jackson.databind.JsonNode;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.util.Collections;
@@ -15,11 +15,11 @@ import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
-public class CommandToRowMapper {
+public class CommandToEntityMapper {
 
     private final JsonMapper jsonMapper;
 
-    public DecisionLogRow toDecisionLogRow(IngestDecisionLogCommand command) {
+    public DecisionLog toEntity(DecisionLogIngestCommand command) {
         JsonNode result = command.result();
         JsonNode input = command.input();
 
@@ -33,7 +33,7 @@ public class CommandToRowMapper {
         Map<String, Object> bundles = convertToMap(command.bundles());
         Map<String, Object> raw = convertToMap(command.raw());
 
-        return DecisionLogRow.of(
+        return DecisionLog.of(
                 command.decisionId(),
                 command.timestamp(),
                 command.path(),

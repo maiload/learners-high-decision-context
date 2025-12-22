@@ -1,7 +1,7 @@
-package com.example.opa.policydecisionlog.shared.mapper;
+package com.example.opa.policydecisionlog.command.api.mapper;
 
 import com.example.opa.policydecisionlog.command.api.dto.DecisionLogIngestRequest;
-import com.example.opa.policydecisionlog.command.app.model.IngestDecisionLogCommand;
+import com.example.opa.policydecisionlog.command.app.dto.DecisionLogIngestCommand;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -14,20 +14,20 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class ApiToCommandMapperTest {
+class RequestToCommandMapperTest {
 
-    private ApiToCommandMapper mapper;
+    private RequestToCommandMapper mapper;
     private JsonMapper jsonMapper;
 
     @BeforeEach
     void setUp() {
         jsonMapper = JsonMapper.builder().build();
-        mapper = new ApiToCommandMapper(jsonMapper);
+        mapper = new RequestToCommandMapper(jsonMapper);
     }
 
     @Nested
-    @DisplayName("toIngestDecisionLogCommand")
-    class ToIngestDecisionLogCommand {
+    @DisplayName("toCommand")
+    class ToCommand {
 
         @Test
         @DisplayName("모든 필드가 있는 요청이 주어지면 Command로 정상 매핑된다")
@@ -47,7 +47,7 @@ class ApiToCommandMapperTest {
             );
 
             // when
-            IngestDecisionLogCommand command = mapper.toIngestDecisionLogCommand(request);
+            DecisionLogIngestCommand command = mapper.toCommand(request);
 
             // then
             assertThat(command.decisionId()).isEqualTo(decisionId);
@@ -73,7 +73,7 @@ class ApiToCommandMapperTest {
             );
 
             // when
-            IngestDecisionLogCommand command = mapper.toIngestDecisionLogCommand(request);
+            DecisionLogIngestCommand command = mapper.toCommand(request);
 
             // then
             assertThat(command.opaInstanceId()).isNull();
@@ -93,7 +93,7 @@ class ApiToCommandMapperTest {
             );
 
             // when
-            IngestDecisionLogCommand command = mapper.toIngestDecisionLogCommand(request);
+            DecisionLogIngestCommand command = mapper.toCommand(request);
 
             // then
             assertThat(command.raw()).isNotNull();

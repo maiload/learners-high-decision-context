@@ -1,7 +1,7 @@
 package com.example.opa.policydecisionlog.shared.mapper;
 
 import com.example.opa.policydecisionlog.command.api.dto.DecisionLogIngestRequest;
-import com.example.opa.policydecisionlog.command.app.model.IngestDecisionLogCommand;
+import com.example.opa.policydecisionlog.command.app.dto.IngestDecisionLogCommand;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.JsonNode;

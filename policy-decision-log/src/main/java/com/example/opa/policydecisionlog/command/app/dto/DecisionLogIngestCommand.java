@@ -1,11 +1,11 @@
-package com.example.opa.policydecisionlog.command.app.model;
+package com.example.opa.policydecisionlog.command.app.dto;
 
 import tools.jackson.databind.JsonNode;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-public record IngestDecisionLogCommand(
+public record DecisionLogIngestCommand(
         UUID decisionId,
         OffsetDateTime timestamp,
         String path,
@@ -18,7 +18,7 @@ public record IngestDecisionLogCommand(
         JsonNode result,
         JsonNode raw
 ) {
-    public static IngestDecisionLogCommand of(
+    public static DecisionLogIngestCommand of(
             UUID decisionId,
             OffsetDateTime timestamp,
             String path,
@@ -31,7 +31,7 @@ public record IngestDecisionLogCommand(
             JsonNode result,
             JsonNode raw
     ) {
-        return new IngestDecisionLogCommand(
+        return new DecisionLogIngestCommand(
                 decisionId,
                 timestamp,
                 path,
