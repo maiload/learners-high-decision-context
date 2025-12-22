@@ -2,6 +2,8 @@ plugins {
 	id 'java'
 	id 'org.springframework.boot' version '4.0.0'
 	id 'io.spring.dependency-management' version '1.1.7'
+	id 'jacoco'
+	id "org.sonarqube" version "7.2.0.6526"
 }
 
 group = 'com.example.opa'
@@ -47,4 +49,66 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
+	finalizedBy jacocoTestReport
+}
+
+// Jacoco
+jacoco {
+	toolVersion = '0.8.14'
+}
+
+jacocoTestReport {
+	dependsOn test
+	reports {
+		xml.required = true
+		html.required = true
+	}
+
+	afterEvaluate {
+		classDirectories.setFrom(files(classDirectories.files.collect {
+			fileTree(dir: it, exclude: [
+					'**/Q*.class',                    // QueryDSL Q클래스
+					'**/*Application.class',          // Spring Boot Application
+					'**/config/*.class',               // 설정 클래스
+					'**/dto/*.class',                 // DTO
+					'**/model/*.class',               // Entity, Model
+					'**/exception/*.class',           // 예외 클래스
+					'**/infra/*.class'                // Repository
+			])
+		}))
+	}
+}
+
+jacocoTestCoverageVerification {
+	violationRules {
+		rule {
+			element = 'CLASS'
+			limit {
+				counter = 'LINE'
+				value = 'COVEREDRATIO'
+				minimum = 0.80
+			}
+			excludes = [
+					'**/Q*',
+					'**/*Application*',
+					'**/config/**',
+					'**/dto/**',
+					'**/model/**',
+					'**/exception/**',
+					'**/infra/**'
+			]
+		}
+	}
+}
+
+// SonarQube
+sonarqube {
+	properties {
+		property 'sonar.host.url', 'http://localhost:9000'
+		property 'sonar.token', System.getenv('SONAR_TOKEN')
+		property 'sonar.projectKey', 'Policy-Decision-Log'
+		property 'sonar.projectName', 'Policy Decision Log'
+		property 'sonar.coverage.jacoco.xmlReportPaths', 'build/reports/jacoco/test/jacocoTestReport.xml'
+		property 'sonar.exclusions', '**/Q*.java'
+	}
 }

@@ -10,8 +10,8 @@ public record GzipProperties(
         long maxDecompressedSize
 ) {
     public static final String DEFAULT_PATH = "/logs";
-    public static final long DEFAULT_MAX_COMPRESSED = 64 * 1024;
-    public static final long DEFAULT_MAX_DECOMPRESSED = 1024 * 1024;
+    public static final long DEFAULT_MAX_COMPRESSED = 64L * 1024;
+    public static final long DEFAULT_MAX_DECOMPRESSED = 1024L * 1024;
 
     public GzipProperties {
         if (!StringUtils.hasText(path)) {
