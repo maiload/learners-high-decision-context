@@ -11,7 +11,6 @@ import tools.jackson.databind.json.JsonMapper;
 
 import java.util.Collections;
 import java.util.Map;
-import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -21,14 +20,9 @@ public class CommandToEntityMapper {
 
     public DecisionLog toEntity(DecisionLogIngestCommand command) {
         JsonNode result = command.result();
-        JsonNode input = command.input();
 
         boolean overallAllow = extractAllow(result);
-        UUID realmId = extractAccessKeyUuid(result, "realm_id");
-        UUID userId = extractAccessKeyUuid(result, "user_id");
-        UUID userPolicyId = extractAccessKeyUuid(result, "user_policy_id");
-        String osType = extractOsType(input);
-        Integer violationCount = extractViolationCount(result);
+        String service = extractService(command.path());
 
         Map<String, Object> bundles = convertToMap(command.bundles());
         Map<String, Object> raw = convertToMap(command.raw());
@@ -42,12 +36,8 @@ public class CommandToEntityMapper {
                 command.reqId(),
                 command.opaInstanceId(),
                 command.opaVersion(),
-                realmId,
-                userId,
-                userPolicyId,
-                osType,
+                service,
                 bundles,
-                violationCount,
                 raw
         );
     }
@@ -68,41 +58,16 @@ public class CommandToEntityMapper {
         return false;
     }
 
-    private UUID extractAccessKeyUuid(JsonNode result, String key) {
-        if (result == null || result.isNull()) return null;
-        JsonNode accessKey = result.get("access_key");
-        if (accessKey == null || accessKey.isNull()) return null;
-        JsonNode value = accessKey.get(key);
-        if (value == null || value.isNull()) return null;
-        return parseUuidOrNull(value.asString());
-    }
-
-    private String extractOsType(JsonNode input) {
-        if (input == null || input.isNull()) return null;
-        JsonNode agentData = input.get("agent_data");
-        if (agentData == null || agentData.isNull()) return null;
-        JsonNode data = agentData.get("data");
-        if (data == null || data.isNull()) return null;
-        JsonNode osType = data.get("os_type");
-        if (osType == null || osType.isNull()) return null;
-        return osType.asString();
-    }
-
-    private Integer extractViolationCount(JsonNode result) {
-        if (result == null || result.isNull()) return null;
-        JsonNode violations = result.get("violations");
-        if (violations != null && violations.isArray()) {
-            return violations.size();
-        }
-        return null;
-    }
-
-    private UUID parseUuidOrNull(String value) {
-        if (!StringUtils.hasText(value)) return null;
-        try {
-            return UUID.fromString(value);
-        } catch (IllegalArgumentException e) {
+    private String extractService(String path) {
+        if (!StringUtils.hasText(path)) {
             return null;
         }
+        String[] segments = path.split("/");
+        for (String segment : segments) {
+            if (!segment.isBlank()) {
+                return segment;
+            }
+        }
+        return null;
     }
 }

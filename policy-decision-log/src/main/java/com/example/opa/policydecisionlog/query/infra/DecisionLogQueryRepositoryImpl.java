@@ -7,6 +7,7 @@ import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
+import org.springframework.util.StringUtils;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -42,8 +43,7 @@ public class DecisionLogQueryRepositoryImpl implements DecisionLogQueryRepositor
                         timestampFrom(query.from()),
                         timestampTo(query.to()),
                         allowEquals(query.allow()),
-                        userIdEquals(query.userId()),
-                        realmIdEquals(query.realmId()),
+                        serviceEquals(query.service()),
                         pathContains(query.path())
                 )
                 .orderBy(decisionLog.ts.desc())
@@ -63,12 +63,8 @@ public class DecisionLogQueryRepositoryImpl implements DecisionLogQueryRepositor
                 decisionLog.reqId,
                 decisionLog.opaInstanceId,
                 decisionLog.opaVersion,
-                decisionLog.realmId,
-                decisionLog.userId,
-                decisionLog.userPolicyId,
-                decisionLog.osType,
+                decisionLog.service,
                 decisionLog.bundles,
-                decisionLog.violationCount,
                 decisionLog.raw,
                 decisionLog.createdAt
         );
@@ -90,15 +86,11 @@ public class DecisionLogQueryRepositoryImpl implements DecisionLogQueryRepositor
         return allow != null ? decisionLog.overallAllow.eq(allow) : null;
     }
 
-    private BooleanExpression userIdEquals(UUID userId) {
-        return userId != null ? decisionLog.userId.eq(userId) : null;
-    }
-
-    private BooleanExpression realmIdEquals(UUID realmId) {
-        return realmId != null ? decisionLog.realmId.eq(realmId) : null;
+    private BooleanExpression serviceEquals(String service) {
+        return StringUtils.hasText(service) ? decisionLog.service.eq(service) : null;
     }
 
     private BooleanExpression pathContains(String path) {
-        return path != null && !path.isBlank() ? decisionLog.path.contains(path) : null;
+        return StringUtils.hasText(path) ? decisionLog.path.contains(path) : null;
     }
 }

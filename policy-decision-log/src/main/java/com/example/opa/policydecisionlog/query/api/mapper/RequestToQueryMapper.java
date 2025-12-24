@@ -16,8 +16,7 @@ public class RequestToQueryMapper {
                 request.from(),
                 request.to(),
                 request.allow(),
-                request.userId(),
-                request.realmId(),
+                request.service(),
                 request.path(),
                 resolvedLimit,
                 request.cursor()

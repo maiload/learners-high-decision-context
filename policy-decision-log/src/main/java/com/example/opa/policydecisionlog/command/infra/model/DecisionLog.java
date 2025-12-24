@@ -35,7 +35,7 @@ public class DecisionLog {
     @Column(name = "overall_allow", nullable = false)
     private boolean overallAllow;
 
-    @Column(name = "requested_by", columnDefinition = "text")
+    @Column(name = "requested_by")
     private String requestedBy;
 
     @Column(name = "req_id")
@@ -44,27 +44,15 @@ public class DecisionLog {
     @Column(name = "opa_instance_id")
     private UUID opaInstanceId;
 
-    @Column(name = "opa_version", columnDefinition = "text")
+    @Column(name = "opa_version")
     private String opaVersion;
 
-    @Column(name = "realm_id")
-    private UUID realmId;
-
-    @Column(name = "user_id")
-    private UUID userId;
-
-    @Column(name = "user_policy_id")
-    private UUID userPolicyId;
-
-    @Column(name = "os_type")
-    private String osType;
+    @Column(name = "service")
+    private String service;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "bundles", columnDefinition = "jsonb")
     private Map<String, Object> bundles;
-
-    @Column(name = "violation_count")
-    private Integer violationCount;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "raw", columnDefinition = "jsonb")
@@ -76,8 +64,7 @@ public class DecisionLog {
 
     public static DecisionLog of(UUID decisionId, OffsetDateTime ts, String path, boolean overallAllow,
                                  String requestedBy, Long reqId, UUID opaInstanceId, String opaVersion,
-                                 UUID realmId, UUID userId, UUID userPolicyId, String osType,
-                                 Map<String, Object> bundles, Integer violationCount, Map<String, Object> raw) {
+                                 String service, Map<String, Object> bundles, Map<String, Object> raw) {
         DecisionLog entity = new DecisionLog();
         entity.decisionId = decisionId;
         entity.ts = ts;
@@ -87,12 +74,8 @@ public class DecisionLog {
         entity.reqId = reqId;
         entity.opaInstanceId = opaInstanceId;
         entity.opaVersion = opaVersion;
-        entity.realmId = realmId;
-        entity.userId = userId;
-        entity.userPolicyId = userPolicyId;
-        entity.osType = osType;
+        entity.service = service;
         entity.bundles = bundles;
-        entity.violationCount = violationCount;
         entity.raw = raw;
         return entity;
     }

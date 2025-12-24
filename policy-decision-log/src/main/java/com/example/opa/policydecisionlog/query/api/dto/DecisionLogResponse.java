@@ -15,13 +15,13 @@ public record DecisionLogResponse(
         @Schema(description = "판단 시간")
         OffsetDateTime timestamp,
 
-        @Schema(description = "정책 경로", example = "/policy/main")
+        @Schema(description = "정책 경로", example = "cloud_access/device_posture/response")
         String path,
 
         @Schema(description = "전체 허용 여부")
-        boolean allow,
+        boolean overallAllow,
 
-        @Schema(description = "요청자", example = "user@example.com")
+        @Schema(description = "요청자 IP", example = "192.168.1.100:12345")
         String requestedBy,
 
         @Schema(description = "요청 ID")
@@ -33,23 +33,11 @@ public record DecisionLogResponse(
         @Schema(description = "OPA 버전", example = "1.0.0")
         String opaVersion,
 
-        @Schema(description = "Realm ID")
-        UUID realmId,
-
-        @Schema(description = "사용자 ID")
-        UUID userId,
-
-        @Schema(description = "사용자 정책 ID")
-        UUID userPolicyId,
-
-        @Schema(description = "OS 타입", example = "WINDOWS")
-        String osType,
+        @Schema(description = "서비스명", example = "cloud_access")
+        String service,
 
         @Schema(description = "번들 정보")
         Map<String, Object> bundles,
-
-        @Schema(description = "위반 개수", example = "2")
-        Integer violationCount,
 
         @Schema(description = "원본 Decision Log (JSON)")
         Map<String, Object> raw,
@@ -67,12 +55,8 @@ public record DecisionLogResponse(
                 row.reqId(),
                 row.opaInstanceId(),
                 row.opaVersion(),
-                row.realmId(),
-                row.userId(),
-                row.userPolicyId(),
-                row.osType(),
+                row.service(),
                 row.bundles(),
-                row.violationCount(),
                 row.raw(),
                 row.createdAt()
         );
