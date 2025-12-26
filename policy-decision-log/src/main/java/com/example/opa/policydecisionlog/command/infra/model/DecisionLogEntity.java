@@ -17,7 +17,7 @@ import java.util.UUID;
 @Table(name = "decision_logs")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class DecisionLog {
+public class DecisionLogEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -62,10 +62,10 @@ public class DecisionLog {
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
-    public static DecisionLog of(UUID decisionId, OffsetDateTime ts, String path, boolean overallAllow,
-                                 String requestedBy, Long reqId, UUID opaInstanceId, String opaVersion,
-                                 String service, Map<String, Object> bundles, Map<String, Object> raw) {
-        DecisionLog entity = new DecisionLog();
+    public static DecisionLogEntity of(UUID decisionId, OffsetDateTime ts, String path, boolean overallAllow,
+                                       String requestedBy, Long reqId, UUID opaInstanceId, String opaVersion,
+                                       String service, Map<String, Object> bundles, Map<String, Object> raw) {
+        DecisionLogEntity entity = new DecisionLogEntity();
         entity.decisionId = decisionId;
         entity.ts = ts;
         entity.path = path;
@@ -83,7 +83,7 @@ public class DecisionLog {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof DecisionLog that)) return false;
+        if (!(o instanceof DecisionLogEntity that)) return false;
         return Objects.equals(decisionId, that.decisionId);
     }
 
