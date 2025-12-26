@@ -14,7 +14,11 @@ import java.util.Objects;
 import java.util.UUID;
 
 @Entity
-@Table(name = "decision_logs")
+@Table(name = "decision_logs", indexes = {
+        @Index(name = "idx_decision_id", columnList = "decision_id", unique = true),
+        @Index(name = "idx_ts_desc", columnList = "ts DESC"),
+        @Index(name = "idx_service_ts", columnList = "service, ts DESC")
+})
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class DecisionLogEntity {

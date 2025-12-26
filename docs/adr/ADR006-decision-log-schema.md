@@ -21,8 +21,3 @@ Accepted
 
 컨텍스트(Context)는 애플리케이션 레이어에서 생성하며,
 아직 형태가 고정되지 않았기 때문에 DB에 별도 저장하는 방식은 추후에 결정
-
----
-
-### Schema
-![img.png](img/schema.png)
