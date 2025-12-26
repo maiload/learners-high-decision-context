@@ -1,7 +1,11 @@
 package com.example.opa.policydecisionlog.query.infra;
 
+import com.example.opa.policydecisionlog.query.app.DecisionLogQueryRepository;
+import com.example.opa.policydecisionlog.query.app.dto.DecisionLogReadModel;
 import com.example.opa.policydecisionlog.query.app.dto.DecisionLogSearchQuery;
+import com.example.opa.policydecisionlog.query.infra.mapper.RowToReadModelMapper;
 import com.example.opa.policydecisionlog.query.infra.model.DecisionLogRow;
+import com.querydsl.core.types.ConstructorExpression;
 import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
@@ -14,30 +18,31 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import static com.example.opa.policydecisionlog.command.infra.model.QDecisionLog.decisionLog;
+import static com.example.opa.policydecisionlog.command.infra.model.QDecisionLogEntity.decisionLogEntity;
 
 @Repository
 @RequiredArgsConstructor
 public class DecisionLogQueryRepositoryImpl implements DecisionLogQueryRepository {
 
     private final JPAQueryFactory queryFactory;
+    private final RowToReadModelMapper mapper;
 
     @Override
-    public Optional<DecisionLogRow> findByDecisionId(UUID decisionId) {
+    public Optional<DecisionLogReadModel> findByDecisionId(UUID decisionId) {
         DecisionLogRow result = queryFactory
                 .select(projection())
-                .from(decisionLog)
-                .where(decisionLog.decisionId.eq(decisionId))
+                .from(decisionLogEntity)
+                .where(decisionLogEntity.decisionId.eq(decisionId))
                 .fetchOne();
 
-        return Optional.ofNullable(result);
+        return Optional.ofNullable(result).map(mapper::toReadModel);
     }
 
     @Override
-    public List<DecisionLogRow> search(DecisionLogSearchQuery query) {
+    public List<DecisionLogReadModel> search(DecisionLogSearchQuery query) {
         return queryFactory
                 .select(projection())
-                .from(decisionLog)
+                .from(decisionLogEntity)
                 .where(
                         cursorCondition(query.cursor()),
                         timestampFrom(query.from()),
@@ -46,51 +51,54 @@ public class DecisionLogQueryRepositoryImpl implements DecisionLogQueryRepositor
                         serviceEquals(query.service()),
                         pathContains(query.path())
                 )
-                .orderBy(decisionLog.ts.desc())
+                .orderBy(decisionLogEntity.ts.desc())
                 .limit(query.limit() + 1L)
-                .fetch();
+                .fetch()
+                .stream()
+                .map(mapper::toReadModel)
+                .toList();
     }
 
-    private com.querydsl.core.types.ConstructorExpression<DecisionLogRow> projection() {
+    private ConstructorExpression<DecisionLogRow> projection() {
         return Projections.constructor(
                 DecisionLogRow.class,
-                decisionLog.id,
-                decisionLog.decisionId,
-                decisionLog.ts,
-                decisionLog.path,
-                decisionLog.overallAllow,
-                decisionLog.requestedBy,
-                decisionLog.reqId,
-                decisionLog.opaInstanceId,
-                decisionLog.opaVersion,
-                decisionLog.service,
-                decisionLog.bundles,
-                decisionLog.raw,
-                decisionLog.createdAt
+                decisionLogEntity.id,
+                decisionLogEntity.decisionId,
+                decisionLogEntity.ts,
+                decisionLogEntity.path,
+                decisionLogEntity.overallAllow,
+                decisionLogEntity.requestedBy,
+                decisionLogEntity.reqId,
+                decisionLogEntity.opaInstanceId,
+                decisionLogEntity.opaVersion,
+                decisionLogEntity.service,
+                decisionLogEntity.bundles,
+                decisionLogEntity.raw,
+                decisionLogEntity.createdAt
         );
     }
 
     private BooleanExpression cursorCondition(OffsetDateTime cursor) {
-        return cursor != null ? decisionLog.ts.lt(cursor) : null;
+        return cursor != null ? decisionLogEntity.ts.lt(cursor) : null;
     }
 
     private BooleanExpression timestampFrom(OffsetDateTime from) {
-        return from != null ? decisionLog.ts.goe(from) : null;
+        return from != null ? decisionLogEntity.ts.goe(from) : null;
     }
 
     private BooleanExpression timestampTo(OffsetDateTime to) {
-        return to != null ? decisionLog.ts.loe(to) : null;
+        return to != null ? decisionLogEntity.ts.loe(to) : null;
     }
 
     private BooleanExpression allowEquals(Boolean allow) {
-        return allow != null ? decisionLog.overallAllow.eq(allow) : null;
+        return allow != null ? decisionLogEntity.overallAllow.eq(allow) : null;
     }
 
     private BooleanExpression serviceEquals(String service) {
-        return StringUtils.hasText(service) ? decisionLog.service.eq(service) : null;
+        return StringUtils.hasText(service) ? decisionLogEntity.service.eq(service) : null;
     }
 
     private BooleanExpression pathContains(String path) {
-        return StringUtils.hasText(path) ? decisionLog.path.contains(path) : null;
+        return StringUtils.hasText(path) ? decisionLogEntity.path.contains(path) : null;
     }
 }

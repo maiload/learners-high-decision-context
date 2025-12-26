@@ -1,6 +1,6 @@
 package com.example.opa.policydecisionlog.query.api.dto;
 
-import com.example.opa.policydecisionlog.query.infra.model.DecisionLogRow;
+import com.example.opa.policydecisionlog.query.app.dto.DecisionLogReadModel;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.OffsetDateTime;
@@ -45,20 +45,20 @@ public record DecisionLogResponse(
         @Schema(description = "생성 시간")
         OffsetDateTime createdAt
 ) {
-    public static DecisionLogResponse from(DecisionLogRow row) {
+    public static DecisionLogResponse from(DecisionLogReadModel readModel) {
         return new DecisionLogResponse(
-                row.decisionId(),
-                row.ts(),
-                row.path(),
-                row.overallAllow(),
-                row.requestedBy(),
-                row.reqId(),
-                row.opaInstanceId(),
-                row.opaVersion(),
-                row.service(),
-                row.bundles(),
-                row.raw(),
-                row.createdAt()
+                readModel.decisionId(),
+                readModel.timestamp(),
+                readModel.path(),
+                readModel.overallAllow(),
+                readModel.requestedBy(),
+                readModel.reqId(),
+                readModel.opaInstanceId(),
+                readModel.opaVersion(),
+                readModel.service(),
+                readModel.bundles(),
+                readModel.raw(),
+                readModel.createdAt()
         );
     }
 }

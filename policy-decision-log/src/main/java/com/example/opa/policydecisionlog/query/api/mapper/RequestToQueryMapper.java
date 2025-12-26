@@ -12,7 +12,7 @@ public class RequestToQueryMapper {
 
     public DecisionLogSearchQuery toQuery(DecisionLogSearchRequest request) {
         int resolvedLimit = resolveLimit(request.limit());
-        return DecisionLogSearchQuery.of(
+        return new DecisionLogSearchQuery(
                 request.from(),
                 request.to(),
                 request.allow(),

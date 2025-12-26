@@ -1,5 +1,7 @@
 package com.example.opa.policydecisionlog.query.api;
 
+import com.example.opa.policydecisionlog.query.api.dto.DecisionContextCursorResponse;
+import com.example.opa.policydecisionlog.query.api.dto.DecisionContextResponse;
 import com.example.opa.policydecisionlog.query.api.dto.DecisionLogCursorResponse;
 import com.example.opa.policydecisionlog.query.api.dto.DecisionLogResponse;
 import com.example.opa.policydecisionlog.query.api.dto.DecisionLogSearchRequest;
@@ -43,12 +45,33 @@ public class DecisionLogQueryController {
         return DecisionLogResponse.from(queryService.getByDecisionId(decisionId));
     }
 
+    @Operation(summary = "Decision Context 조회", description = "Decision ID로 디버깅용 상세 컨텍스트를 조회합니다.")
+    @ApiResponse(responseCode = "200", description = "OK")
+    @ApiResponse(responseCode = "404", description = "Not Found",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @GetMapping("/{decisionId}/context")
+    public DecisionContextResponse getDecisionContext(
+            @Parameter(description = "Decision ID", required = true)
+            @PathVariable UUID decisionId) {
+        log.info("GET /decisions/{}/context", decisionId);
+        return DecisionContextResponse.from(queryService.getContextByDecisionId(decisionId));
+    }
+
     @Operation(summary = "Decision Log 목록 조회", description = "필터 조건으로 Decision Log 목록을 조회합니다. (Cursor 기반 페이징을 지원)")
     @ApiResponse(responseCode = "200", description = "OK")
     @GetMapping
     public DecisionLogCursorResponse searchDecisions(DecisionLogSearchRequest request) {
         log.info("GET /decisions with params: {}", request);
         var query = mapper.toQuery(request);
-        return DecisionLogCursorResponse.from(queryService.search(query), query.limit());
+        return DecisionLogCursorResponse.from(queryService.search(query));
+    }
+
+    @Operation(summary = "Decision Context Summary 목록 조회", description = "필터 조건으로 Decision Context Summary 목록을 조회합니다. (Cursor 기반 페이징을 지원)")
+    @ApiResponse(responseCode = "200", description = "OK")
+    @GetMapping("/contexts")
+    public DecisionContextCursorResponse searchContexts(DecisionLogSearchRequest request) {
+        log.info("GET /decisions/contexts with params: {}", request);
+        var query = mapper.toQuery(request);
+        return DecisionContextCursorResponse.from(queryService.searchContextSummaries(query));
     }
 }
