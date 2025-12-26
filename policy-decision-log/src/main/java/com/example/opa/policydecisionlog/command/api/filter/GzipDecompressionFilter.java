@@ -1,4 +1,4 @@
-package com.example.opa.policydecisionlog.command.filter;
+package com.example.opa.policydecisionlog.command.api.filter;
 
 import com.example.opa.policydecisionlog.shared.config.GzipProperties;
 import jakarta.servlet.FilterChain;
