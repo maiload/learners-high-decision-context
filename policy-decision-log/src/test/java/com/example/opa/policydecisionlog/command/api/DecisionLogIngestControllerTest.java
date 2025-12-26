@@ -62,7 +62,7 @@ class DecisionLogIngestControllerTest {
                 """.formatted(decisionId, UUID.randomUUID());
 
         given(requestToCommandMapper.toCommand(any()))
-                .willReturn(DecisionLogIngestCommand.of(
+                .willReturn(new DecisionLogIngestCommand(
                         decisionId, OffsetDateTime.now(), "/policy/main",
                         "user@example.com", 1L, null, null, null, null, null, null
                 ));
@@ -115,7 +115,7 @@ class DecisionLogIngestControllerTest {
                 """.formatted(decisionId1, decisionId2);
 
         given(requestToCommandMapper.toCommand(any()))
-                .willReturn(DecisionLogIngestCommand.of(
+                .willReturn(new DecisionLogIngestCommand(
                         UUID.randomUUID(), OffsetDateTime.now(), "/policy/main",
                         null, null, null, null, null, null, null, null
                 ));

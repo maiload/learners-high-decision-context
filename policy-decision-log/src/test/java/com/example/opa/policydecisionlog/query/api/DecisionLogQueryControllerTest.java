@@ -2,9 +2,10 @@ package com.example.opa.policydecisionlog.query.api;
 
 import com.example.opa.policydecisionlog.query.api.mapper.RequestToQueryMapper;
 import com.example.opa.policydecisionlog.query.app.DecisionLogQueryService;
+import com.example.opa.policydecisionlog.query.app.dto.CursorPage;
+import com.example.opa.policydecisionlog.query.app.dto.DecisionLogReadModel;
 import com.example.opa.policydecisionlog.query.app.dto.DecisionLogSearchQuery;
-import com.example.opa.policydecisionlog.query.fixture.DecisionLogRowFixture;
-import com.example.opa.policydecisionlog.query.infra.model.DecisionLogRow;
+import com.example.opa.policydecisionlog.query.fixture.DecisionLogReadModelFixture;
 import com.example.opa.policydecisionlog.shared.config.GzipProperties;
 import com.example.opa.policydecisionlog.shared.exception.DecisionNotFoundException;
 import org.junit.jupiter.api.DisplayName;
@@ -50,16 +51,16 @@ class DecisionLogQueryControllerTest {
         void givenExistingDecisionId_whenGetDecision_thenReturnsOkWithDecisionLog() throws Exception {
             // given
             UUID decisionId = UUID.randomUUID();
-            DecisionLogRow row = DecisionLogRowFixture.createDefault();
+            DecisionLogReadModel readModel = DecisionLogReadModelFixture.createWithDecisionId(decisionId);
 
-            given(queryService.getByDecisionId(decisionId)).willReturn(row);
+            given(queryService.getByDecisionId(decisionId)).willReturn(readModel);
 
             // when & then
             mockMvc.perform(get("/decisions/{decisionId}", decisionId))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.decisionId").value(row.decisionId().toString()))
-                    .andExpect(jsonPath("$.path").value(row.path()))
-                    .andExpect(jsonPath("$.allow").value(row.overallAllow()));
+                    .andExpect(jsonPath("$.decisionId").value(decisionId.toString()))
+                    .andExpect(jsonPath("$.path").value(readModel.path()))
+                    .andExpect(jsonPath("$.overallAllow").value(readModel.overallAllow()));
 
             then(queryService).should().getByDecisionId(decisionId);
         }
@@ -95,13 +96,14 @@ class DecisionLogQueryControllerTest {
         @DisplayName("[GET] Decision Log 목록 조회 - 정상 호출")
         void givenSearchParams_whenSearchDecisions_thenReturnsOkWithResults() throws Exception {
             // given
-            DecisionLogRow row = DecisionLogRowFixture.createDefault();
-            DecisionLogSearchQuery query = DecisionLogSearchQuery.of(
-                    null, null, null, null, null, null, 20, null
+            DecisionLogReadModel readModel = DecisionLogReadModelFixture.createDefault();
+            DecisionLogSearchQuery query = new DecisionLogSearchQuery(
+                    null, null, null, null, null, 20, null
             );
+            CursorPage<DecisionLogReadModel> page = new CursorPage<>(List.of(readModel), null);
 
             given(mapper.toQuery(any())).willReturn(query);
-            given(queryService.search(query)).willReturn(List.of(row));
+            given(queryService.search(query)).willReturn(page);
 
             // when & then
             mockMvc.perform(get("/decisions"))
@@ -118,12 +120,13 @@ class DecisionLogQueryControllerTest {
         @DisplayName("[GET] Decision Log 목록 조회 - 빈 결과")
         void givenNoResults_whenSearchDecisions_thenReturnsEmptyArray() throws Exception {
             // given
-            DecisionLogSearchQuery query = DecisionLogSearchQuery.of(
-                    null, null, null, null, null, null, 20, null
+            DecisionLogSearchQuery query = new DecisionLogSearchQuery(
+                    null, null, null, null, null, 20, null
             );
+            CursorPage<DecisionLogReadModel> emptyPage = new CursorPage<>(List.of(), null);
 
             given(mapper.toQuery(any())).willReturn(query);
-            given(queryService.search(query)).willReturn(List.of());
+            given(queryService.search(query)).willReturn(emptyPage);
 
             // when & then
             mockMvc.perform(get("/decisions"))
@@ -139,18 +142,17 @@ class DecisionLogQueryControllerTest {
             // given
             OffsetDateTime ts1 = OffsetDateTime.now().minusMinutes(1);
             OffsetDateTime ts2 = OffsetDateTime.now().minusMinutes(2);
-            OffsetDateTime ts3 = OffsetDateTime.now().minusMinutes(3);
 
-            DecisionLogRow row1 = DecisionLogRowFixture.createWithTimestamp(ts1);
-            DecisionLogRow row2 = DecisionLogRowFixture.createWithTimestamp(ts2);
-            DecisionLogRow row3 = DecisionLogRowFixture.createWithTimestamp(ts3);
+            DecisionLogReadModel readModel1 = DecisionLogReadModelFixture.createWithTimestamp(ts1);
+            DecisionLogReadModel readModel2 = DecisionLogReadModelFixture.createWithTimestamp(ts2);
 
-            DecisionLogSearchQuery query = DecisionLogSearchQuery.of(
-                    null, null, null, null, null, null, 2, null
+            DecisionLogSearchQuery query = new DecisionLogSearchQuery(
+                    null, null, null, null, null, 2, null
             );
+            CursorPage<DecisionLogReadModel> page = new CursorPage<>(List.of(readModel1, readModel2), ts2);
 
             given(mapper.toQuery(any())).willReturn(query);
-            given(queryService.search(query)).willReturn(List.of(row1, row2, row3));
+            given(queryService.search(query)).willReturn(page);
 
             // when & then
             mockMvc.perform(get("/decisions").param("limit", "2"))
@@ -163,20 +165,18 @@ class DecisionLogQueryControllerTest {
         @DisplayName("[GET] Decision Log 목록 조회 - 필터 파라미터 적용")
         void givenFilterParams_whenSearchDecisions_thenFiltersResults() throws Exception {
             // given
-            UUID userId = UUID.randomUUID();
-            UUID realmId = UUID.randomUUID();
-            DecisionLogSearchQuery query = DecisionLogSearchQuery.of(
-                    null, null, true, userId, realmId, "/policy/main", 20, null
+            DecisionLogSearchQuery query = new DecisionLogSearchQuery(
+                    null, null, true, "cloud_access", "/policy/main", 20, null
             );
+            CursorPage<DecisionLogReadModel> emptyPage = new CursorPage<>(List.of(), null);
 
             given(mapper.toQuery(any())).willReturn(query);
-            given(queryService.search(query)).willReturn(List.of());
+            given(queryService.search(query)).willReturn(emptyPage);
 
             // when & then
             mockMvc.perform(get("/decisions")
                             .param("allow", "true")
-                            .param("userId", userId.toString())
-                            .param("realmId", realmId.toString())
+                            .param("service", "cloud_access")
                             .param("path", "/policy/main"))
                     .andExpect(status().isOk());
 
