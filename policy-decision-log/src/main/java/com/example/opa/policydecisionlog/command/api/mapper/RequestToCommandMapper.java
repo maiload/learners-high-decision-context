@@ -17,7 +17,7 @@ public class RequestToCommandMapper {
         DecisionLogIngestRequest.LabelsDto labels = request.labels();
         JsonNode raw = jsonMapper.valueToTree(request);
 
-        return DecisionLogIngestCommand.of(
+        return new DecisionLogIngestCommand(
                 request.decisionId(),
                 request.timestamp(),
                 request.path(),

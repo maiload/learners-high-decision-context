@@ -1,7 +1,7 @@
-package com.example.opa.policydecisionlog.command.app.mapper;
+package com.example.opa.policydecisionlog.command.infra.mapper;
 
 import com.example.opa.policydecisionlog.command.app.dto.DecisionLogIngestCommand;
-import com.example.opa.policydecisionlog.command.infra.model.DecisionLog;
+import com.example.opa.policydecisionlog.command.infra.model.DecisionLogEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -9,7 +9,6 @@ import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
-import java.util.Collections;
 import java.util.Map;
 
 @Component
@@ -18,7 +17,7 @@ public class CommandToEntityMapper {
 
     private final JsonMapper jsonMapper;
 
-    public DecisionLog toEntity(DecisionLogIngestCommand command) {
+    public DecisionLogEntity toEntity(DecisionLogIngestCommand command) {
         JsonNode result = command.result();
 
         boolean overallAllow = extractAllow(result);
@@ -27,7 +26,7 @@ public class CommandToEntityMapper {
         Map<String, Object> bundles = convertToMap(command.bundles());
         Map<String, Object> raw = convertToMap(command.raw());
 
-        return DecisionLog.of(
+        return DecisionLogEntity.of(
                 command.decisionId(),
                 command.timestamp(),
                 command.path(),
@@ -44,7 +43,7 @@ public class CommandToEntityMapper {
 
     private Map<String, Object> convertToMap(JsonNode jsonNode) {
         if (jsonNode == null || jsonNode.isNull()) {
-            return Collections.emptyMap();
+            return Map.of();
         }
         return jsonMapper.convertValue(jsonNode, new TypeReference<>() {});
     }
