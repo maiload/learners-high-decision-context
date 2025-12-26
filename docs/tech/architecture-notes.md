@@ -50,3 +50,31 @@ query/
 - 레이어 간 순환 참조 방지를 위해 DTO는 해당 레이어에서만 정의
 - [Hexagonal Architecture](https://tech.osci.kr/hexagonal-architecture/)
 - [Domain-Driven 헥사고날 아키텍처 - KakaoStyle](https://devblog.kakaostyle.com/ko/2025-03-21-1-domain-driven-hexagonal-architecture-by-example/)
+
+## 5. Cursor-based Pagination
+- Spring Data JPA의 `Page`/`Pageable` 대신 Cursor 기반 페이징 직접 구현
+- `Page`/`Pageable` 미사용 이유:
+  - 내부적으로 Offset 기반으로 동작
+  - 전체 개수 조회를 위한 추가 COUNT 쿼리 발생
+- Offset 방식의 문제점:
+  - 페이지가 깊어질수록 성능 저하 (`OFFSET 10000`은 10000개를 스캔 후 스킵)
+  - 데이터 추가/삭제 시 중복 또는 누락 발생 가능
+- Cursor 방식의 장점:
+  - 인덱스를 활용한 일정한 성능 (`WHERE ts < :cursor`)
+  - 실시간 데이터 변경에도 일관된 결과
+- `limit + 1` 패턴으로 다음 페이지 존재 여부 확인:
+  - 요청: `limit = 20`
+  - 조회: `LIMIT 21` (limit + 1)
+  - 결과가 21개면 다음 페이지 존재, 20개만 반환하고 마지막 항목의 timestamp를 nextCursor로 제공
+- `CursorPage<T>` 제네릭 DTO로 페이징 결과 표현
+
+## 6. Strategy + Registry Pattern
+- DecisionContext 추출 로직에 Strategy + Registry 패턴 적용
+- **Strategy 패턴**: 서비스별로 다른 추출 전략을 동일한 인터페이스로 제공
+  - `DecisionExtractor` - 추출 전략 인터페이스
+  - `CloudAccessDecisionExtractor` - cloud_access 서비스 전용 전략
+  - `DefaultDecisionExtractor` - 기본 fallback 전략
+- **Registry 패턴**: 여러 Strategy를 보관하고 조건에 맞는 것을 조회
+  - `DecisionExtractorRegistry` - Extractor 목록을 보관하고 서비스명으로 조회
+  - Spring이 `List<DecisionExtractor>`를 자동 주입
+  - 새로운 서비스 추가 시 `DecisionExtractor` 구현체만 추가하면 자동 등록
