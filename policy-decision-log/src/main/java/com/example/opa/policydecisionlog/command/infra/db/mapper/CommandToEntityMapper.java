@@ -1,7 +1,7 @@
-package com.example.opa.policydecisionlog.command.infra.mapper;
+package com.example.opa.policydecisionlog.command.infra.db.mapper;
 
 import com.example.opa.policydecisionlog.command.app.dto.DecisionLogIngestCommand;
-import com.example.opa.policydecisionlog.command.infra.model.DecisionLogEntity;
+import com.example.opa.policydecisionlog.command.infra.db.model.DecisionLogEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;

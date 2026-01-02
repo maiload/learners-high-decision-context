@@ -1,4 +1,4 @@
-package com.example.opa.policydecisionlog.command.infra.model;
+package com.example.opa.policydecisionlog.command.infra.db.model;
 
 import jakarta.persistence.*;
 import lombok.AccessLevel;

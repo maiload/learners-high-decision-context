@@ -1,9 +1,9 @@
-package com.example.opa.policydecisionlog.command.infra;
+package com.example.opa.policydecisionlog.command.infra.db;
 
-import com.example.opa.policydecisionlog.command.app.DecisionLogCommandRepository;
+import com.example.opa.policydecisionlog.command.app.port.DecisionLogPersistence;
 import com.example.opa.policydecisionlog.command.app.dto.DecisionLogIngestCommand;
-import com.example.opa.policydecisionlog.command.infra.mapper.CommandToEntityMapper;
-import com.example.opa.policydecisionlog.command.infra.model.DecisionLogEntity;
+import com.example.opa.policydecisionlog.command.infra.db.mapper.CommandToEntityMapper;
+import com.example.opa.policydecisionlog.command.infra.db.model.DecisionLogEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -15,7 +15,7 @@ import java.util.List;
 
 @Repository
 @RequiredArgsConstructor
-public class DecisionLogCommandRepositoryImpl implements DecisionLogCommandRepository {
+public class DecisionLogPersistenceImpl implements DecisionLogPersistence {
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
     private final CommandToEntityMapper mapper;

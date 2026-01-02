@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import static com.example.opa.policydecisionlog.command.infra.model.QDecisionLogEntity.decisionLogEntity;
+import static com.example.opa.policydecisionlog.command.infra.db.model.QDecisionLogEntity.decisionLogEntity;
 
 @Repository
 @RequiredArgsConstructor

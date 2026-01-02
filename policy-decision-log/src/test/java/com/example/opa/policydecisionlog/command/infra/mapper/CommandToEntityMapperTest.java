@@ -1,7 +1,8 @@
 package com.example.opa.policydecisionlog.command.infra.mapper;
 
 import com.example.opa.policydecisionlog.command.app.dto.DecisionLogIngestCommand;
-import com.example.opa.policydecisionlog.command.infra.model.DecisionLogEntity;
+import com.example.opa.policydecisionlog.command.infra.db.mapper.CommandToEntityMapper;
+import com.example.opa.policydecisionlog.command.infra.db.model.DecisionLogEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -10,7 +11,6 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.time.OffsetDateTime;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 

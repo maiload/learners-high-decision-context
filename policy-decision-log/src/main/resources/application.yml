@@ -30,6 +30,8 @@ opa:
     max-decompressed-size: 1048576  # 1MB
   kafka:
     topic: decision-logs
+    dlq-topic: decision-logs.dlq
+    parking-lot-topic: decision-logs.parking-lot
 
 springdoc:
   show-actuator: true
