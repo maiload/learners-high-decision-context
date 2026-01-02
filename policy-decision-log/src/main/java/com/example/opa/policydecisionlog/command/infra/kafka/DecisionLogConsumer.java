@@ -4,12 +4,13 @@ import com.example.opa.policydecisionlog.command.api.dto.DecisionLogIngestReques
 import com.example.opa.policydecisionlog.command.api.mapper.RequestToCommandMapper;
 import com.example.opa.policydecisionlog.command.app.DecisionLogCommandService;
 import com.example.opa.policydecisionlog.command.app.dto.DecisionLogIngestCommand;
-import tools.jackson.core.type.TypeReference;
-import tools.jackson.databind.json.JsonMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Component;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.util.List;
 
@@ -23,18 +24,22 @@ public class DecisionLogConsumer {
     private final JsonMapper jsonMapper;
 
     @KafkaListener(topics = "${opa.kafka.topic:decision-logs}")
-    public void consume(String message) {
-        log.debug("Received decision log from Kafka");
+    public void consume(List<String> messages, Acknowledgment ack) {
+        log.debug("Received {} message(s) from Kafka", messages.size());
 
-        List<DecisionLogIngestRequest> requests = jsonMapper.readValue(
-                message, new TypeReference<>() {}
-        );
-
-        List<DecisionLogIngestCommand> commands = requests.stream()
+        List<DecisionLogIngestCommand> commands = messages.stream()
+                .flatMap(message -> {
+                    List<DecisionLogIngestRequest> requests = jsonMapper.readValue(
+                            message, new TypeReference<>() {}
+                    );
+                    return requests.stream();
+                })
                 .map(mapper::toCommand)
                 .toList();
 
         commandService.ingestLogs(commands);
+        ack.acknowledge();
+
         log.info("Saved {} decision log(s)", commands.size());
     }
 }

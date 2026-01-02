@@ -4,6 +4,10 @@ spring:
     consumer:
       group-id: decision-log-writer
       auto-offset-reset: earliest
+      max-poll-records: 500
+    listener:
+      type: batch
+      ack-mode: manual
 
   datasource:
     url: jdbc:postgresql://localhost:5433/opa_logs
