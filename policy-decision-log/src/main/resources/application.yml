@@ -1,4 +1,10 @@
 spring:
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: decision-log-writer
+      auto-offset-reset: earliest
+
   datasource:
     url: jdbc:postgresql://localhost:5433/opa_logs
     username: opa
@@ -18,6 +24,8 @@ opa:
     path: /logs
     max-compressed-size: 32768      # 32KB
     max-decompressed-size: 1048576  # 1MB
+  kafka:
+    topic: decision-logs
 
 springdoc:
   show-actuator: true
