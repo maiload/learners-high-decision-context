@@ -23,6 +23,7 @@ public class DecisionLogIngestController {
     @Operation(summary = "Decision Log 수집", description = "OPA에서 전송한 Decision Log를 Kafka로 발행합니다.")
     @ApiResponse(responseCode = "204", description = "No Content")
     @ApiResponse(responseCode = "400", description = "Bad Request")
+    @ApiResponse(responseCode = "503", description = "Service Unavailable")
     @PostMapping("/logs")
     public ResponseEntity<Void> ingestLogs(@RequestBody List<Map<String, Object>> requests) {
         publishDecisionLogUseCase.execute(requests);

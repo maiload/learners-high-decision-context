@@ -5,9 +5,13 @@ spring:
       group-id: decision-log-writer
       auto-offset-reset: earliest
       max-poll-records: 500
-    listener:
-      type: batch
-      ack-mode: manual
+    producer:
+      acks: all
+      properties:
+        linger.ms: 5
+        batch.size: 16384
+        enable.idempotence: true
+        compression.type: lz4
 
   datasource:
     url: jdbc:postgresql://localhost:5433/opa_logs
@@ -28,10 +32,32 @@ opa:
     path: /logs
     max-compressed-size: 32768      # 32KB
     max-decompressed-size: 1048576  # 1MB
+  infra-failure:
+    path: ./logs/infra-failures
   kafka:
     topic: decision-logs
     dlq-topic: decision-logs.dlq
     parking-lot-topic: decision-logs.parking-lot
+    fast-producer:
+      retries: 1
+      delivery-timeout-ms: 8000
+      request-timeout-ms: 3000
+      max-block-ms: 2000
+    parking-producer:
+      retries: 2
+      delivery-timeout-ms: 20000
+      request-timeout-ms: 8000
+      max-block-ms: 5000
+    dlq-producer:
+      retries: 3
+      delivery-timeout-ms: 30000
+      request-timeout-ms: 12000
+      max-block-ms: 5000
+    consumer-backoff:
+      initial-interval-ms: 1000
+      multiplier: 2.0
+      max-interval-ms: 10000
+      max-elapsed-time-ms: 30000
 
 springdoc:
   show-actuator: true

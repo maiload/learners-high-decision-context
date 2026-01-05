@@ -1,39 +1,66 @@
 package com.example.opa.policydecisionlog.command.infra.kafka;
 
 import com.example.opa.policydecisionlog.command.app.port.DecisionLogEventPublisher;
-import lombok.RequiredArgsConstructor;
+import com.example.opa.policydecisionlog.command.infra.kafka.exception.DecisionLogPublishException;
+import com.example.opa.policydecisionlog.shared.config.KafkaCustomProperties;
+import com.example.opa.policydecisionlog.shared.exception.MissingDecisionIdException;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class DecisionLogEventPublisherImpl implements DecisionLogEventPublisher {
 
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final JsonMapper jsonMapper;
+    private final KafkaCustomProperties properties;
 
-    @Value("${opa.kafka.topic:decision-logs}")
-    private String topic;
+    public DecisionLogEventPublisherImpl(
+            @Qualifier("fastKafkaTemplate") KafkaTemplate<String, String> kafkaTemplate,
+            JsonMapper jsonMapper,
+            KafkaCustomProperties properties
+    ) {
+        this.kafkaTemplate = kafkaTemplate;
+        this.jsonMapper = jsonMapper;
+        this.properties = properties;
+    }
 
     @Override
     public void publish(List<Map<String, Object>> requests) {
-        String payload = jsonMapper.writeValueAsString(requests);
-        kafkaTemplate.send(topic, payload)
-                .whenComplete((result, ex) -> {
-                    if (ex != null) {
-                        log.error("Failed to send decision log", ex);
-                    } else {
-                        log.debug("Sent decision log: partition={}, offset={}",
-                                result.getRecordMetadata().partition(),
-                                result.getRecordMetadata().offset());
-                    }
-                });
+        for (Map<String, Object> request : requests) {
+            try {
+                String key = extractDecisionId(request);
+                String payload = jsonMapper.writeValueAsString(request);
+                var result = kafkaTemplate.send(properties.topic(), key, payload)
+                        .get(properties.fastProducer().getTimeoutMs(), TimeUnit.MILLISECONDS);
+                log.info("Sent decision log: topic={}, partition={}, offset={}, decisionId={}",
+                        properties.topic(), result.getRecordMetadata().partition(),
+                        result.getRecordMetadata().offset(), key);
+            } catch (ExecutionException | InterruptedException | TimeoutException e) {
+                log.error("Failed to send decision log: topic={}", properties.topic(), e);
+                if (e instanceof InterruptedException) {
+                    Thread.currentThread().interrupt();
+                }
+                throw new DecisionLogPublishException(properties.topic(), e);
+            }
+        }
+        log.info("Published {} decision log(s) to Kafka", requests.size());
+    }
+
+    private String extractDecisionId(Map<String, Object> request) {
+        Object decisionId = request.get("decision_id");
+        if (decisionId == null) {
+            throw new MissingDecisionIdException();
+        }
+        return decisionId.toString();
     }
 }
