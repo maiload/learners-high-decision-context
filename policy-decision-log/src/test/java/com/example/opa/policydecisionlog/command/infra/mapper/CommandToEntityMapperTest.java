@@ -1,6 +1,7 @@
 package com.example.opa.policydecisionlog.command.infra.mapper;
 
 import com.example.opa.policydecisionlog.command.app.dto.DecisionLogIngestCommand;
+import com.example.opa.policydecisionlog.command.app.dto.DecisionLogIngestCommand.Labels;
 import com.example.opa.policydecisionlog.command.infra.db.mapper.CommandToEntityMapper;
 import com.example.opa.policydecisionlog.command.infra.db.model.DecisionLogEntity;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,10 +43,11 @@ class CommandToEntityMapperTest {
             JsonNode result = jsonMapper.valueToTree(Map.of("allow", true));
             JsonNode bundles = jsonMapper.valueToTree(Map.of("bundle1", "v1"));
             JsonNode raw = jsonMapper.valueToTree(Map.of("raw", "data"));
+            Labels labels = new Labels(opaInstanceId, "1.0.0");
 
             DecisionLogIngestCommand command = new DecisionLogIngestCommand(
-                    decisionId, timestamp, "/cloud_access/policy/main", "user@example.com", 1L,
-                    opaInstanceId, "1.0.0", bundles, null, result, raw
+                    decisionId, timestamp, "cloud_access/policy/main", "192.168.65.1:30825", 1L,
+                    labels, bundles, null, result, raw
             );
 
             // when
@@ -54,9 +56,9 @@ class CommandToEntityMapperTest {
             // then
             assertThat(entity.getDecisionId()).isEqualTo(decisionId);
             assertThat(entity.getTs()).isEqualTo(timestamp);
-            assertThat(entity.getPath()).isEqualTo("/cloud_access/policy/main");
+            assertThat(entity.getPath()).isEqualTo("cloud_access/policy/main");
             assertThat(entity.isOverallAllow()).isTrue();
-            assertThat(entity.getRequestedBy()).isEqualTo("user@example.com");
+            assertThat(entity.getRequestedBy()).isEqualTo("192.168.65.1:30825");
             assertThat(entity.getReqId()).isEqualTo(1L);
             assertThat(entity.getOpaInstanceId()).isEqualTo(opaInstanceId);
             assertThat(entity.getOpaVersion()).isEqualTo("1.0.0");
@@ -70,8 +72,8 @@ class CommandToEntityMapperTest {
         void givenCommandWithNullResult_whenToEntity_thenOverallAllowIsFalse() {
             // given
             DecisionLogIngestCommand command = new DecisionLogIngestCommand(
-                    UUID.randomUUID(), OffsetDateTime.now(), "/policy/main",
-                    null, null, null, null, null, null, null, null
+                    UUID.randomUUID(), OffsetDateTime.now(), "cloud_access/policy/main",
+                    null, null, null, null, null, null, null
             );
 
             // when
@@ -89,7 +91,7 @@ class CommandToEntityMapperTest {
 
             DecisionLogIngestCommand command = new DecisionLogIngestCommand(
                     UUID.randomUUID(), OffsetDateTime.now(), "/policy/main",
-                    null, null, null, null, null, null, result, null
+                    null, null, null, null, null, result, null
             );
 
             // when
@@ -104,8 +106,8 @@ class CommandToEntityMapperTest {
         void givenPathWithService_whenToEntity_thenExtractsService() {
             // given
             DecisionLogIngestCommand command = new DecisionLogIngestCommand(
-                    UUID.randomUUID(), OffsetDateTime.now(), "/cloud_access/device_posture/response",
-                    null, null, null, null, null, null, null, null
+                    UUID.randomUUID(), OffsetDateTime.now(), "cloud_access/device_posture/response",
+                    null, null, null, null, null, null, null
             );
 
             // when
@@ -120,8 +122,8 @@ class CommandToEntityMapperTest {
         void givenNullBundles_whenToEntity_thenEmptyMap() {
             // given
             DecisionLogIngestCommand command = new DecisionLogIngestCommand(
-                    UUID.randomUUID(), OffsetDateTime.now(), "/policy/main",
-                    null, null, null, null, null, null, null, null
+                    UUID.randomUUID(), OffsetDateTime.now(), "cloud_access/policy/main",
+                    null, null, null, null, null, null, null
             );
 
             // when
@@ -129,6 +131,23 @@ class CommandToEntityMapperTest {
 
             // then
             assertThat(entity.getBundles()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("labels가 null이면 opaInstanceId와 opaVersion이 null이다")
+        void givenNullLabels_whenToEntity_thenOpaFieldsAreNull() {
+            // given
+            DecisionLogIngestCommand command = new DecisionLogIngestCommand(
+                    UUID.randomUUID(), OffsetDateTime.now(), "cloud_access/policy/main",
+                    null, null, null, null, null, null, null
+            );
+
+            // when
+            DecisionLogEntity entity = mapper.toEntity(command);
+
+            // then
+            assertThat(entity.getOpaInstanceId()).isNull();
+            assertThat(entity.getOpaVersion()).isNull();
         }
     }
 }
