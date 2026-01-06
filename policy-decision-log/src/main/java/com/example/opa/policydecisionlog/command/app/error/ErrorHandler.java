@@ -24,36 +24,35 @@ public class ErrorHandler {
             parkingLotPublisher.publish(commands);
         } else {
             log.info("Non-retryable error detected, starting bisect for {} command(s)", commands.size());
-            bisectAndThrow(commands, commands, error);
+            bisectAndThrow(commands, commands);
         }
     }
 
     private void bisectAndThrow(List<DecisionLogIngestCommand> commands,
-                                List<DecisionLogIngestCommand> originalCommands,
-                                Throwable error) {
+                                List<DecisionLogIngestCommand> originalCommands) {
         if (commands.isEmpty()) {
             return;
-        }
-
-        if (commands.size() == 1) {
-            DecisionLogIngestCommand failedCommand = commands.getFirst();
-            int failedIndex = originalCommands.indexOf(failedCommand);
-            log.warn("Single record failed at index {}: decisionId={}", failedIndex, failedCommand.decisionId());
-            throw new DataErrorException(failedIndex, error);
         }
 
         try {
             persistence.saveAll(commands);
             log.debug("Bisect batch saved successfully: {} command(s)", commands.size());
         } catch (Exception e) {
+            if (commands.size() == 1) {
+                DecisionLogIngestCommand failedCommand = commands.getFirst();
+                int failedIndex = originalCommands.indexOf(failedCommand);
+                log.warn("Single record failed at index {}: decisionId={}", failedIndex, failedCommand.decisionId());
+                throw new DataErrorException(failedIndex, e);
+            }
+
             int mid = commands.size() / 2;
             List<DecisionLogIngestCommand> left = commands.subList(0, mid);
             List<DecisionLogIngestCommand> right = commands.subList(mid, commands.size());
 
             log.debug("Bisect split: {} -> {} + {}", commands.size(), left.size(), right.size());
 
-            bisectAndThrow(left, originalCommands, e);
-            bisectAndThrow(right, originalCommands, e);
+            bisectAndThrow(left, originalCommands);
+            bisectAndThrow(right, originalCommands);
         }
     }
 }
