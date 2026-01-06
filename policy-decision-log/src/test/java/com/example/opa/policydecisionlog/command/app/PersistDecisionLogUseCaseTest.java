@@ -5,10 +5,12 @@ import com.example.opa.policydecisionlog.command.app.dto.PersistResult;
 import com.example.opa.policydecisionlog.command.app.error.DataErrorException;
 import com.example.opa.policydecisionlog.command.app.error.ErrorHandler;
 import com.example.opa.policydecisionlog.command.app.port.DecisionLogPersistence;
+import com.example.opa.policydecisionlog.shared.metrics.DecisionLogMetrics;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Answers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -34,6 +36,9 @@ class PersistDecisionLogUseCaseTest {
 
     @Mock
     private ErrorHandler errorHandler;
+
+    @Mock(answer = Answers.RETURNS_DEEP_STUBS)
+    private DecisionLogMetrics metrics;
 
     @Nested
     @DisplayName("execute")

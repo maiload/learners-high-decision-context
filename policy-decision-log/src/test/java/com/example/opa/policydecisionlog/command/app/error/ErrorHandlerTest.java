@@ -3,10 +3,12 @@ package com.example.opa.policydecisionlog.command.app.error;
 import com.example.opa.policydecisionlog.command.app.dto.DecisionLogIngestCommand;
 import com.example.opa.policydecisionlog.command.app.port.DecisionLogPersistence;
 import com.example.opa.policydecisionlog.command.app.port.ParkingLotPublisher;
+import com.example.opa.policydecisionlog.shared.metrics.DecisionLogMetrics;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Answers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -34,6 +36,9 @@ class ErrorHandlerTest {
 
     @Mock
     private DecisionLogPersistence persistence;
+
+    @Mock(answer = Answers.RETURNS_DEEP_STUBS)
+    private DecisionLogMetrics metrics;
 
     @Nested
     @DisplayName("handle - Retryable 에러")

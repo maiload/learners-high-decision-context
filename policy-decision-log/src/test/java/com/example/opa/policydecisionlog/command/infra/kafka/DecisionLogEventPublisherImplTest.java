@@ -4,6 +4,7 @@ import com.example.opa.policydecisionlog.command.infra.kafka.exception.DecisionL
 import com.example.opa.policydecisionlog.shared.config.KafkaCustomProperties;
 import com.example.opa.policydecisionlog.shared.config.KafkaCustomProperties.ProducerSettings;
 import com.example.opa.policydecisionlog.shared.exception.MissingDecisionIdException;
+import com.example.opa.policydecisionlog.shared.metrics.DecisionLogMetrics;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -38,6 +39,9 @@ class DecisionLogEventPublisherImplTest {
     @Mock(answer = Answers.RETURNS_DEEP_STUBS)
     private SendResult<String, String> sendResult;
 
+    @Mock(answer = Answers.RETURNS_DEEP_STUBS)
+    private DecisionLogMetrics metrics;
+
     private static final String TOPIC = "decision-logs";
 
     @BeforeEach
@@ -49,7 +53,7 @@ class DecisionLogEventPublisherImplTest {
                 producerSettings, producerSettings, producerSettings,
                 new KafkaCustomProperties.ConsumerBackoff(1000, 2.0, 10000, 30000)
         );
-        publisher = new DecisionLogEventPublisherImpl(kafkaTemplate, jsonMapper, properties);
+        publisher = new DecisionLogEventPublisherImpl(kafkaTemplate, jsonMapper, properties, metrics);
     }
 
     @Nested

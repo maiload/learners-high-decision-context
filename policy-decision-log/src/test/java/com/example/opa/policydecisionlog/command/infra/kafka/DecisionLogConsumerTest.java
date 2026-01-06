@@ -4,12 +4,14 @@ import com.example.opa.policydecisionlog.command.app.PersistDecisionLogUseCase;
 import com.example.opa.policydecisionlog.command.app.dto.PersistResult;
 import com.example.opa.policydecisionlog.command.app.error.DataErrorException;
 import com.example.opa.policydecisionlog.command.infra.kafka.exception.ConsumerProcessingException;
+import com.example.opa.policydecisionlog.shared.metrics.DecisionLogMetrics;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Answers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.kafka.listener.BatchListenerFailedException;
@@ -34,10 +36,13 @@ class DecisionLogConsumerTest {
     @Mock
     private Acknowledgment acknowledgment;
 
+    @Mock(answer = Answers.RETURNS_DEEP_STUBS)
+    private DecisionLogMetrics metrics;
+
     @BeforeEach
     void setUp() {
         JsonMapper jsonMapper = JsonMapper.builder().build();
-        consumer = new DecisionLogConsumer(persistDecisionLogUseCase, jsonMapper);
+        consumer = new DecisionLogConsumer(persistDecisionLogUseCase, jsonMapper, metrics);
     }
 
     @Nested

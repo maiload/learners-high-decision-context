@@ -2,6 +2,7 @@ package com.example.opa.policydecisionlog.command.api;
 
 import com.example.opa.policydecisionlog.command.app.PublishDecisionLogUseCase;
 import com.example.opa.policydecisionlog.shared.config.GzipProperties;
+import com.example.opa.policydecisionlog.shared.metrics.DecisionLogMetrics;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -32,6 +33,10 @@ class DecisionLogIngestControllerTest {
 
     @MockitoBean
     private GzipProperties gzipProperties;
+
+    @MockitoBean
+    private DecisionLogMetrics metrics;
+
 
     @Test
     @DisplayName("[POST] Decision Log 수집 - 정상 요청")
