@@ -4,6 +4,7 @@ import com.example.opa.policydecisionlog.command.app.port.DecisionLogEventPublis
 import com.example.opa.policydecisionlog.command.infra.kafka.exception.DecisionLogPublishException;
 import com.example.opa.policydecisionlog.shared.config.KafkaCustomProperties;
 import com.example.opa.policydecisionlog.shared.exception.MissingDecisionIdException;
+import com.example.opa.policydecisionlog.shared.metrics.DecisionLogMetrics;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -23,15 +24,18 @@ public class DecisionLogEventPublisherImpl implements DecisionLogEventPublisher 
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final JsonMapper jsonMapper;
     private final KafkaCustomProperties properties;
+    private final DecisionLogMetrics metrics;
 
     public DecisionLogEventPublisherImpl(
             @Qualifier("fastKafkaTemplate") KafkaTemplate<String, String> kafkaTemplate,
             JsonMapper jsonMapper,
-            KafkaCustomProperties properties
+            KafkaCustomProperties properties,
+            DecisionLogMetrics metrics
     ) {
         this.kafkaTemplate = kafkaTemplate;
         this.jsonMapper = jsonMapper;
         this.properties = properties;
+        this.metrics = metrics;
     }
 
     @Override
@@ -42,10 +46,12 @@ public class DecisionLogEventPublisherImpl implements DecisionLogEventPublisher 
                 String payload = jsonMapper.writeValueAsString(request);
                 var result = kafkaTemplate.send(properties.topic(), key, payload)
                         .get(properties.fastProducer().getTimeoutMs(), TimeUnit.MILLISECONDS);
+                metrics.recordPublish(true);
                 log.info("Sent decision log: topic={}, partition={}, offset={}, decisionId={}",
                         properties.topic(), result.getRecordMetadata().partition(),
                         result.getRecordMetadata().offset(), key);
             } catch (ExecutionException | InterruptedException | TimeoutException e) {
+                metrics.recordPublish(false);
                 log.error("Failed to send decision log: topic={}", properties.topic(), e);
                 if (e instanceof InterruptedException) {
                     Thread.currentThread().interrupt();

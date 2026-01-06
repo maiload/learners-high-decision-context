@@ -5,6 +5,7 @@ import com.example.opa.policydecisionlog.command.app.dto.PersistResult;
 import com.example.opa.policydecisionlog.command.app.error.DataErrorException;
 import com.example.opa.policydecisionlog.command.app.error.ErrorHandler;
 import com.example.opa.policydecisionlog.command.app.port.DecisionLogPersistence;
+import com.example.opa.policydecisionlog.shared.metrics.DecisionLogMetrics;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -22,6 +23,7 @@ public class PersistDecisionLogUseCase {
 
     private final DecisionLogPersistence persistence;
     private final ErrorHandler errorHandler;
+    private final DecisionLogMetrics metrics;
 
     @Transactional
     public PersistResult execute(List<DecisionLogIngestCommand> commands) {
@@ -33,10 +35,13 @@ public class PersistDecisionLogUseCase {
         for (int attempt = 0; attempt < MAX_RETRIES; attempt++) {
             try {
                 persistence.saveAll(commands);
+                metrics.recordDbSave(true, commands.size());
                 return PersistResult.SUCCESS;
             } catch (Exception e) {
                 log.warn("DB save failed (attempt {}/{}): {}", attempt + 1, MAX_RETRIES, e.getMessage());
+                metrics.recordDbSaveRetry();
                 if (attempt == MAX_RETRIES - 1) {
+                    metrics.recordDbSave(false, commands.size());
                     return handleError(commands, e);
                 }
                 sleep(BACKOFF_MS[attempt]);

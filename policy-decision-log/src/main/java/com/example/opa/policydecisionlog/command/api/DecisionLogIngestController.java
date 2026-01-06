@@ -1,6 +1,7 @@
 package com.example.opa.policydecisionlog.command.api;
 
 import com.example.opa.policydecisionlog.command.app.PublishDecisionLogUseCase;
+import com.example.opa.policydecisionlog.shared.metrics.DecisionLogMetrics;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -19,6 +20,7 @@ import java.util.Map;
 public class DecisionLogIngestController {
 
     private final PublishDecisionLogUseCase publishDecisionLogUseCase;
+    private final DecisionLogMetrics metrics;
 
     @Operation(summary = "Decision Log 수집", description = "OPA에서 전송한 Decision Log를 Kafka로 발행합니다.")
     @ApiResponse(responseCode = "204", description = "No Content")
@@ -27,6 +29,7 @@ public class DecisionLogIngestController {
     @PostMapping("/logs")
     public ResponseEntity<Void> ingestLogs(@RequestBody List<Map<String, Object>> requests) {
         publishDecisionLogUseCase.execute(requests);
+        metrics.recordIngest(requests.size());
         return ResponseEntity.noContent().build();
     }
 }

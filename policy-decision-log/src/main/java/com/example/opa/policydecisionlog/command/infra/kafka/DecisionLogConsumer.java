@@ -5,6 +5,7 @@ import com.example.opa.policydecisionlog.command.app.dto.DecisionLogIngestComman
 import com.example.opa.policydecisionlog.command.app.dto.PersistResult;
 import com.example.opa.policydecisionlog.command.app.error.DataErrorException;
 import com.example.opa.policydecisionlog.command.infra.kafka.exception.ConsumerProcessingException;
+import com.example.opa.policydecisionlog.shared.metrics.DecisionLogMetrics;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -14,6 +15,8 @@ import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.json.JsonMapper;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,18 +27,22 @@ public class DecisionLogConsumer {
 
     private final PersistDecisionLogUseCase persistDecisionLogUseCase;
     private final JsonMapper jsonMapper;
+    private final DecisionLogMetrics metrics;
 
     @KafkaListener(topics = "${opa.kafka.topic:decision-logs}")
     public void consume(List<ConsumerRecord<String, String>> records, Acknowledgment ack) {
+        Instant start = Instant.now();
         log.debug("Received {} record(s) from Kafka", records.size());
 
         List<DecisionLogIngestCommand> commands = parseRecords(records);
 
         if (!commands.isEmpty()) {
             persistCommands(commands, records);
+            recordE2ELatency(commands);
         }
 
         ack.acknowledge();
+        metrics.recordConsume(Duration.between(start, Instant.now()));
         log.info("Processed {} record(s), saved {} decision log(s)", records.size(), commands.size());
     }
 
@@ -71,5 +78,12 @@ public class DecisionLogConsumer {
                     failedRecord.partition(), failedRecord.offset());
             throw new BatchListenerFailedException("Data error", e, failedRecord);
         }
+    }
+
+    private void recordE2ELatency(List<DecisionLogIngestCommand> commands) {
+        commands.stream()
+                .filter(cmd -> cmd.timestamp() != null)
+                .findFirst()
+                .ifPresent(cmd -> metrics.recordEndToEndLatency(cmd.timestamp().toInstant()));
     }
 }

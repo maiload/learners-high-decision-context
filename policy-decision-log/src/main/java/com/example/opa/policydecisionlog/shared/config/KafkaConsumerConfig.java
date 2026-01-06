@@ -1,8 +1,10 @@
 package com.example.opa.policydecisionlog.shared.config;
 
 import com.example.opa.policydecisionlog.command.app.port.InfrastructureFailureWriter;
+import com.example.opa.policydecisionlog.shared.metrics.DecisionLogMetrics;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 import org.jspecify.annotations.NullMarked;
@@ -45,11 +47,19 @@ public class KafkaConsumerConfig {
     }
 
     @Bean
-    public DefaultErrorHandler dlqErrorHandler() {
+    public DefaultErrorHandler dlqErrorHandler(DecisionLogMetrics metrics) {
         DeadLetterPublishingRecoverer dlqRecoverer = new DeadLetterPublishingRecoverer(
                 dlqKafkaTemplate,
                 (rec, ex) -> new TopicPartition(customProperties.dlqTopic(), rec.partition())
-        );
+        ) {
+            @Override
+            @NullMarked
+            public void accept(ConsumerRecord<?, ?> rec, Exception ex) {
+                super.accept(rec, ex);
+                metrics.recordDlqSent(1);
+                log.info("Sent to DLQ: topic={}, partition={}, offset={}", rec.topic(), rec.partition(), rec.offset());
+            }
+        };
 
         DefaultErrorHandler handler = new DefaultErrorHandler(
                 dlqRecoverer,

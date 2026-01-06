@@ -3,6 +3,7 @@ package com.example.opa.policydecisionlog.command.app.error;
 import com.example.opa.policydecisionlog.command.app.dto.DecisionLogIngestCommand;
 import com.example.opa.policydecisionlog.command.app.port.DecisionLogPersistence;
 import com.example.opa.policydecisionlog.command.app.port.ParkingLotPublisher;
+import com.example.opa.policydecisionlog.shared.metrics.DecisionLogMetrics;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -17,11 +18,13 @@ public class ErrorHandler {
     private final ErrorClassifier errorClassifier;
     private final ParkingLotPublisher parkingLotPublisher;
     private final DecisionLogPersistence persistence;
+    private final DecisionLogMetrics metrics;
 
     public void handle(List<DecisionLogIngestCommand> commands, Throwable error) {
         if (errorClassifier.isRetryable(error)) {
             log.info("Retryable error detected, sending {} command(s) to parking lot", commands.size());
             parkingLotPublisher.publish(commands);
+            metrics.recordParkingSent(commands.size());
         } else {
             log.info("Non-retryable error detected, starting bisect for {} command(s)", commands.size());
             bisectAndThrow(commands, commands);
