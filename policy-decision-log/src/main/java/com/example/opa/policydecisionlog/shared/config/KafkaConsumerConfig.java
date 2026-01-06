@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.kafka.autoconfigure.KafkaProperties;
 import org.springframework.context.annotation.Bean;
@@ -47,16 +48,16 @@ public class KafkaConsumerConfig {
     public DefaultErrorHandler dlqErrorHandler() {
         DeadLetterPublishingRecoverer dlqRecoverer = new DeadLetterPublishingRecoverer(
                 dlqKafkaTemplate,
-                (record, ex) -> new TopicPartition(customProperties.dlqTopic(), record.partition())
+                (rec, ex) -> new TopicPartition(customProperties.dlqTopic(), rec.partition())
         );
 
         DefaultErrorHandler handler = new DefaultErrorHandler(
                 dlqRecoverer,
                 customProperties.consumerBackoff().toExponentialBackOff()
         );
-        handler.setRetryListeners((record, ex, deliveryAttempt) ->
+        handler.setRetryListeners((rec, ex, deliveryAttempt) ->
                 log.warn("DLQ retry attempt {} for record: topic={}, partition={}, offset={}",
-                        deliveryAttempt, record.topic(), record.partition(), record.offset())
+                        deliveryAttempt, rec.topic(), rec.partition(), rec.offset())
         );
 
         return handler;
@@ -68,9 +69,9 @@ public class KafkaConsumerConfig {
                 failureWriter::write,
                 customProperties.consumerBackoff().toExponentialBackOff()
         );
-        handler.setRetryListeners((record, ex, deliveryAttempt) ->
+        handler.setRetryListeners((rec, ex, deliveryAttempt) ->
                 log.warn("Infra retry attempt {} for record: topic={}, partition={}, offset={}",
-                        deliveryAttempt, record.topic(), record.partition(), record.offset())
+                        deliveryAttempt, rec.topic(), rec.partition(), rec.offset())
         );
 
         return handler;
@@ -95,7 +96,9 @@ public class KafkaConsumerConfig {
             DefaultErrorHandler infraHandler
     ) {
         return new CommonErrorHandler() {
+
             @Override
+            @NullMarked
             public void handleBatch(Exception exception, ConsumerRecords<?, ?> records,
                                     Consumer<?, ?> consumer, MessageListenerContainer container,
                                     Runnable invokeListener) {

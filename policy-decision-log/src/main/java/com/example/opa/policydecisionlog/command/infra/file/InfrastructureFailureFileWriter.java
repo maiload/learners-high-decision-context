@@ -40,20 +40,20 @@ public class InfrastructureFailureFileWriter implements InfrastructureFailureWri
     }
 
     @Override
-    public void write(ConsumerRecord<?, ?> record, Exception exception) {
+    public void write(ConsumerRecord<?, ?> consumerRecord, Exception exception) {
         String fileName = String.format("infra-failure-%s.jsonl", LocalDate.now().format(DATE_FORMATTER));
         Path filePath = Path.of(path, fileName);
 
         try {
-            InfrastructureFailureEvent event = InfrastructureFailureEvent.fromRecord(record, exception);
+            InfrastructureFailureEvent event = InfrastructureFailureEvent.fromRecord(consumerRecord, exception);
             String json = jsonMapper.writeValueAsString(event);
             Files.writeString(filePath, json + System.lineSeparator(),
                     StandardOpenOption.CREATE, StandardOpenOption.APPEND);
             log.info("Infrastructure failure written: topic={}, partition={}, offset={}",
-                    record.topic(), record.partition(), record.offset());
+                    consumerRecord.topic(), consumerRecord.partition(), consumerRecord.offset());
         } catch (IOException e) {
             log.error("Failed to write infrastructure failure: topic={}, partition={}, offset={}",
-                    record.topic(), record.partition(), record.offset(), e);
+                    consumerRecord.topic(), consumerRecord.partition(), consumerRecord.offset(), e);
         }
     }
 }

@@ -13,13 +13,13 @@ public record InfrastructureFailureEvent(
         String errorMessage,
         OffsetDateTime failedAt
 ) {
-    public static InfrastructureFailureEvent fromRecord(ConsumerRecord<?, ?> record, Exception exception) {
+    public static InfrastructureFailureEvent fromRecord(ConsumerRecord<?, ?> consumerRecord, Exception exception) {
         return new InfrastructureFailureEvent(
-                record.topic(),
-                record.partition(),
-                record.offset(),
-                record.key() != null ? record.key().toString() : null,
-                record.value() != null ? record.value().toString() : null,
+                consumerRecord.topic(),
+                consumerRecord.partition(),
+                consumerRecord.offset(),
+                consumerRecord.key() != null ? consumerRecord.key().toString() : null,
+                consumerRecord.value() != null ? consumerRecord.value().toString() : null,
                 exception.getMessage(),
                 OffsetDateTime.now()
         );

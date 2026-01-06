@@ -42,17 +42,16 @@ public class DecisionLogConsumer {
     private List<DecisionLogIngestCommand> parseRecords(List<ConsumerRecord<String, String>> records) {
         List<DecisionLogIngestCommand> commands = new ArrayList<>();
 
-        for (int i = 0; i < records.size(); i++) {
-            ConsumerRecord<String, String> record = records.get(i);
+        for (ConsumerRecord<String, String> consumerRecord : records) {
             try {
                 DecisionLogIngestCommand command = jsonMapper.readValue(
-                        record.value(), DecisionLogIngestCommand.class
+                        consumerRecord.value(), DecisionLogIngestCommand.class
                 );
                 commands.add(command);
             } catch (Exception e) {
                 log.error("Failed to parse message: partition={}, offset={}",
-                        record.partition(), record.offset(), e);
-                throw new BatchListenerFailedException("Parse failed", e, record);
+                        consumerRecord.partition(), consumerRecord.offset(), e);
+                throw new BatchListenerFailedException("Parse failed", e, consumerRecord);
             }
         }
 
