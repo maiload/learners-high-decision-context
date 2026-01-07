@@ -25,3 +25,90 @@
 Jackson 기본 설정 기준 JSON 데이터는 대략 70~80% 수준으로 압축됨을 확인 가능
 - 이를 바탕으로 압축된 payload 기준 최대 크기를 약 1MB 수준으로 설정
 - [Reducing JSON Data Size](https://www.baeldung.com/json-reduce-data-size#bd-conclusion)
+
+## 4. Kafka Consumer Configuration
+- Spring Kafka의 Batch Listener를 사용하여 배치 단위로 메시지 소비
+- `AckMode.MANUAL` 사용으로 명시적 offset 커밋 제어
+- 에러 처리 완료 후에만 ack하여 메시지 유실 방지
+
+### 주요 설정
+```yaml
+spring:
+  kafka:
+    consumer:
+      max-poll-records: 500        # 한 번의 poll에서 가져올 최대 레코드 수
+      fetch-max-wait: 500ms        # poll 대기 시간
+      fetch-min-size: 1            # 최소 fetch 크기
+```
+
+### Consumer Backoff 설정
+- DB 저장 실패 시 제한된 재시도 후 ErrorHandler로 위임
+- 지수 백오프로 재시도 간격 증가
+```yaml
+opa:
+  kafka:
+    consumer-backoff:
+      initial-interval-ms: 1000   # 초기 대기 시간
+      multiplier: 2.0             # 배수
+      max-interval-ms: 10000      # 최대 대기 시간
+      max-elapsed-time-ms: 30000  # 최대 재시도 시간
+```
+
+## 5. Batch Processing Flow (Command)
+- HTTP API로 수신된 Decision Log는 Kafka 토픽으로 발행
+- Kafka Consumer가 배치 단위로 소비하여 DB에 raw JSON 저장
+
+### 처리 단계
+1. **Deserialize**: JSON 문자열 → DecisionLogIngestCommand 변환
+2. **Persist**: JDBC batchUpdate로 배치 저장
+3. **Ack**: 성공 시 offset 커밋
+
+### 배치 저장
+- JPA `saveAll()` 대신 `NamedParameterJdbcTemplate.batchUpdate()` 사용
+- JDBC 레벨에서 직접 배치 INSERT 수행으로 성능 최적화
+- `ON CONFLICT (decision_id) DO NOTHING`으로 중복 삽입 방지
+
+```java
+private static final String INSERT_SQL = """
+    INSERT INTO decision_logs (...) VALUES (...)
+    ON CONFLICT (decision_id) DO NOTHING
+    """;
+
+public void saveAll(List<DecisionLogIngestCommand> commands) {
+    SqlParameterSource[] batchParams = commands.stream()
+        .map(mapper::toEntity)
+        .map(this::toParameterSource)
+        .toArray(SqlParameterSource[]::new);
+
+    jdbcTemplate.batchUpdate(INSERT_SQL, batchParams);
+}
+```
+
+## 6. DecisionContext Extraction (Query)
+- **조회 시점**에 raw JSON에서 DecisionContext 추출
+- Strategy + Registry 패턴으로 서비스별 추출 로직 분리
+
+### 추출 흐름
+```
+GET /decisions/{id}/context
+    ↓
+DB에서 raw JSON 조회
+    ↓
+DecisionExtractorRegistry.getExtractor(service)
+    ↓
+┌───────────────────────────────────────────────┐
+│ cloud_access → CloudAccessDecisionExtractor   │
+│ 그 외        → DefaultDecisionExtractor        │
+└───────────────────────────────────────────────┘
+    ↓
+DecisionContext (reasons, policies, ...)
+```
+
+### CloudAccessDecisionExtractor
+- `service`가 `cloud_access`인 경우 적용
+- `result.policies[].policy_data`에서 reasons, policies 추출
+- `result.score.breakdown`에서 weight 추출
+
+### DefaultDecisionExtractor
+- 기본 fallback 전략
+- 빈 reasons, policies 반환

@@ -34,19 +34,54 @@ query/
 
 ## 4. Hexagonal / Clean Architecture
 - 헥사고날 아키텍처(Ports & Adapters)와 클린 아키텍처 원칙 적용
-  - `api/` - Adapter (In Adapter): 외부에서 애플리케이션을 호출 (Controller)
-  - `app/` - Domain (Hexagon): 핵심 비즈니스 로직, Port 정의
-  - `infra/` - Adapter (Out Adapter): 애플리케이션이 외부를 호출 (DB, 외부 API)
+  - `api/` - Driving Adapter (In): 외부에서 애플리케이션을 호출 (Controller, Kafka Consumer)
+  - `app/` - Application Core: 핵심 비즈니스 로직, UseCase, Port 정의
+  - `infra/` - Driven Adapter (Out): 애플리케이션이 외부를 호출 (DB, Kafka, File)
 - Port(인터페이스)는 app 레이어에, Adapter(구현체)는 api/infra 레이어에 위치
-  - Outbound Port: `app/DecisionLogQueryRepository`, `app/DecisionLogCommandRepository`
-  - Out Adapter: `infra/DecisionLogQueryRepositoryImpl`, `infra/DecisionLogCommandRepositoryImpl`
+
+### Command Side Ports
+```
+command/app/port/
+├── DecisionLogEventPublisher   # Kafka 원본 토픽 발행
+├── DecisionLogPersistence      # DB 저장 (save, saveAll)
+├── ParkingLotPublisher         # Parking Lot/DLQ 발행
+└── InfrastructureFailureWriter # 장애 시 파일 기록
+```
+
+### Command Side Adapters
+```
+command/infra/
+├── kafka/
+│   ├── DecisionLogConsumer         # Driving Adapter (Main Topic)
+│   ├── ParkingLotConsumer          # Driving Adapter (Parking Topic)
+│   ├── DecisionLogEventPublisherImpl
+│   └── ParkingLotPublisherImpl
+├── db/
+│   └── DecisionLogPersistenceImpl
+└── file/
+    └── InfrastructureFailureFileWriter
+```
+
+### Query Side Ports
+```
+query/app/
+└── DecisionLogQueryRepository  # DB 조회 (인터페이스)
+```
+
+### Query Side Adapters
+```
+query/infra/
+└── DecisionLogQueryRepositoryImpl
+```
+
 - Mapper를 각 레이어에 배치하여 의존성 방향 준수
   - `api/mapper/` - Request DTO → App DTO 변환
   - `infra/mapper/` - App DTO → Entity 변환, Projection → ReadModel 변환
 - shared 패키지는 공통 관심사만 포함
-  - `shared/config/` - 공통 설정 (QueryDslConfig 등)
+  - `shared/config/` - Kafka, QueryDsl 등 공통 설정
   - `shared/exception/` - 공통 예외
-  - `shared/api/` - GlobalExceptionHandler
+  - `shared/metrics/` - Prometheus 메트릭
+  - `shared/kafka/` - Kafka 헤더 상수
 - 레이어 간 순환 참조 방지를 위해 DTO는 해당 레이어에서만 정의
 - [Hexagonal Architecture](https://tech.osci.kr/hexagonal-architecture/)
 - [Domain-Driven 헥사고날 아키텍처 - KakaoStyle](https://devblog.kakaostyle.com/ko/2025-03-21-1-domain-driven-hexagonal-architecture-by-example/)
@@ -78,3 +113,68 @@ query/
   - `DecisionExtractorRegistry` - Extractor 목록을 보관하고 서비스명으로 조회
   - Spring이 `List<DecisionExtractor>`를 자동 주입
   - 새로운 서비스 추가 시 `DecisionExtractor` 구현체만 추가하면 자동 등록
+
+## 7. Kafka Event Streaming
+- Decision Log 수집은 Kafka 기반 이벤트 스트리밍으로 처리
+- HTTP API는 Kafka로 발행만 하고 즉시 응답 (비동기 처리)
+- Kafka Consumer가 배치 단위로 소비하여 DB 저장
+
+### Kafka Topics
+| Topic | 용도 |
+|-------|------|
+| `decision-logs` | 원본 Decision Log |
+| `decision-logs-parking` | 인프라 에러로 실패한 레코드 (지연 재시도) |
+| `decision-logs-dlq` | 데이터 에러로 실패한 레코드 (수동 분석 필요) |
+| `decision-logs-parking-dlq` | Parking Lot 최대 재시도 초과 |
+
+### Producer 전략
+- 용도별 KafkaTemplate 분리 (ADR011 참조)
+  - `fastKafkaTemplate` - 원본 발행 (빠른 응답)
+  - `parkingKafkaTemplate` - Parking Lot (중간 신뢰성)
+  - `dlqKafkaTemplate` - DLQ (최대 신뢰성)
+
+## 8. Error Handling Strategy
+- 에러 유형에 따라 다른 처리 전략 적용 (ADR009 참조)
+
+### 에러 분류 (ErrorClassifier)
+- **Retryable**: SQLException의 SQLState 기반 판단
+  - 08xxx (Connection), 40P01 (Deadlock), 55P03 (Lock), 57014 (Timeout)
+  - → Parking Lot으로 이동, 지수 백오프로 재시도
+- **Non-Retryable**: 데이터 에러, 파싱 에러
+  - → Bisect 알고리즘으로 실패 레코드 식별 후 DLQ 이동
+
+### Parking Lot 복구 (ADR013 참조)
+- 지수 백오프: 1분 → 2분 → 4분 → 8분 → 16분
+- 최대 5회 재시도 후 Parking DLQ로 이동
+- `x-retry-attempt`, `x-not-before` 헤더로 상태 관리
+
+### Composite Error Handler
+```
+CompositeErrorHandler
+├── KafkaInfraException → infraErrorHandler → 파일 기록
+└── 그 외 예외 → dlqErrorHandler → DLQ 전송
+```
+
+### Bisect 알고리즘
+- 배치 내 일부 레코드만 실패할 때 정상 레코드는 살리고 실패 레코드만 격리
+- 이진 탐색으로 O(log n) 복잡도로 실패 레코드 식별
+
+## 9. Observability
+- Prometheus + Grafana 기반 모니터링
+
+### 주요 메트릭
+| 메트릭 | 설명 |
+|--------|------|
+| `decision_log_consume_duration` | Kafka 배치 처리 시간 |
+| `decision_log_e2e_latency` | 수집부터 저장까지 지연 시간 |
+| `decision_log_db_save_total` | DB 저장 성공/실패 카운트 |
+| `decision_log_parking_sent_total` | Parking Lot 전송 카운트 |
+| `decision_log_dlq_sent_total` | DLQ 전송 카운트 |
+| `decision_log_parking_recovered_total` | Parking Lot 복구 성공 카운트 |
+
+### 인프라 구성
+```
+Application → Prometheus (:9090) → Grafana (:3000)
+```
+- `docker-compose.observability.yml`로 로컬 환경 구성
+- `/actuator/prometheus` 엔드포인트로 메트릭 노출
