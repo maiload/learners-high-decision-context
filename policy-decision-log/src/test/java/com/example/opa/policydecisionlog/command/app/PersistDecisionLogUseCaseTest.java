@@ -2,7 +2,6 @@ package com.example.opa.policydecisionlog.command.app;
 
 import com.example.opa.policydecisionlog.command.app.dto.DecisionLogIngestCommand;
 import com.example.opa.policydecisionlog.command.app.dto.PersistResult;
-import com.example.opa.policydecisionlog.command.app.error.DataErrorException;
 import com.example.opa.policydecisionlog.command.app.error.ErrorHandler;
 import com.example.opa.policydecisionlog.command.app.port.DecisionLogPersistence;
 import com.example.opa.policydecisionlog.shared.metrics.DecisionLogMetrics;
@@ -20,7 +19,6 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.*;
@@ -94,23 +92,6 @@ class PersistDecisionLogUseCaseTest {
             assertThat(result).isEqualTo(PersistResult.PARKED);
             then(persistence).should(times(2)).saveAll(commands);
             then(errorHandler).should().handle(eq(commands), any(Throwable.class));
-        }
-
-        @Test
-        @DisplayName("모든 재시도 실패 후 ErrorHandler가 DataErrorException 발생 시 예외 전파")
-        void givenAllRetriesFail_whenErrorHandlerThrowsDataError_thenThrows() {
-            // given
-            List<DecisionLogIngestCommand> commands = List.of(createCommand());
-            RuntimeException dbError = new RuntimeException("DB error");
-            DataErrorException dataError = new DataErrorException(0, dbError);
-
-            willThrow(dbError).given(persistence).saveAll(commands);
-            willThrow(dataError).given(errorHandler).handle(eq(commands), any(Throwable.class));
-
-            // when & then
-            assertThatThrownBy(() -> useCase.execute(commands))
-                    .isInstanceOf(DataErrorException.class)
-                    .hasFieldOrPropertyWithValue("failedIndex", 0);
         }
 
         @Test

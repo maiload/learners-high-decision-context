@@ -18,8 +18,8 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.BDDMockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -67,8 +67,8 @@ class ErrorHandlerTest {
     class HandleNonRetryable {
 
         @Test
-        @DisplayName("단일 커맨드 실패 시 DataErrorException 발생")
-        void givenSingleCommand_whenHandle_thenThrowsDataErrorException() {
+        @DisplayName("단일 커맨드 실패 시 DLQ로 전송")
+        void givenSingleCommand_whenHandle_thenSendsToDlq() {
             // given
             DecisionLogIngestCommand command = createCommand();
             List<DecisionLogIngestCommand> commands = List.of(command);
@@ -77,16 +77,17 @@ class ErrorHandlerTest {
             given(errorClassifier.isRetryable(error)).willReturn(false);
             willThrow(error).given(persistence).saveAll(commands);
 
-            // when & then
-            assertThatThrownBy(() -> errorHandler.handle(commands, error))
-                    .isInstanceOf(DataErrorException.class)
-                    .hasFieldOrPropertyWithValue("failedIndex", 0)
-                    .hasCause(error);
+            // when
+            errorHandler.handle(commands, error);
+
+            // then
+            then(parkingLotPublisher).should().toDlq(command);
+            then(metrics).should().recordDlqSent(1);
         }
 
         @Test
-        @DisplayName("여러 커맨드 중 하나만 실패 시 Bisect로 해당 인덱스 찾음")
-        void givenMultipleCommands_whenOneFails_thenBisectFindsFailingIndex() {
+        @DisplayName("여러 커맨드 중 하나만 실패 시 Bisect로 찾아서 DLQ로 전송")
+        void givenMultipleCommands_whenOneFails_thenBisectFindsAndSendsToDlq() {
             // given
             DecisionLogIngestCommand cmd0 = createCommand();
             DecisionLogIngestCommand cmd1 = createCommand();
@@ -104,15 +105,19 @@ class ErrorHandlerTest {
                 return null;
             }).given(persistence).saveAll(any());
 
-            // when & then
-            assertThatThrownBy(() -> errorHandler.handle(commands, error))
-                    .isInstanceOf(DataErrorException.class)
-                    .hasFieldOrPropertyWithValue("failedIndex", 2);
+            // when
+            errorHandler.handle(commands, error);
+
+            // then
+            then(parkingLotPublisher).should().toDlq(cmd2);
+            then(parkingLotPublisher).should(never()).toDlq(cmd0);
+            then(parkingLotPublisher).should(never()).toDlq(cmd1);
+            then(metrics).should().recordDlqSent(1);
         }
 
         @Test
-        @DisplayName("모든 커맨드가 성공하면 예외 없이 종료")
-        void givenAllSucceed_whenBisect_thenNoException() {
+        @DisplayName("모든 커맨드가 성공하면 DLQ 전송 없음")
+        void givenAllSucceed_whenBisect_thenNoDlqSent() {
             // given
             List<DecisionLogIngestCommand> commands = List.of(createCommand(), createCommand());
             RuntimeException error = new RuntimeException("Initial error");
@@ -123,8 +128,9 @@ class ErrorHandlerTest {
             // when
             errorHandler.handle(commands, error);
 
-            // then - 예외 없이 정상 종료
+            // then
             then(persistence).should().saveAll(commands);
+            then(parkingLotPublisher).should(never()).toDlq(any());
         }
 
         @Test
@@ -142,6 +148,49 @@ class ErrorHandlerTest {
             // then
             then(persistence).shouldHaveNoInteractions();
             then(parkingLotPublisher).shouldHaveNoInteractions();
+        }
+    }
+
+    @Nested
+    @DisplayName("handleRecovery")
+    class HandleRecovery {
+
+        @Test
+        @DisplayName("Retryable 에러면 retry로 재발행")
+        void givenRetryableError_whenHandleRecovery_thenRetries() {
+            // given
+            DecisionLogIngestCommand command = createCommand();
+            SQLException error = new SQLException("Connection error", "08001");
+            int attempt = 1;
+
+            given(errorClassifier.isRetryable(error)).willReturn(true);
+
+            // when
+            errorHandler.handleRecovery(command, attempt, error);
+
+            // then
+            then(parkingLotPublisher).should().retry(command, attempt + 1);
+            then(metrics).should().recordParkingSent(1);
+            then(parkingLotPublisher).should(never()).toDlq(any());
+        }
+
+        @Test
+        @DisplayName("Non-retryable 에러면 DLQ로 전송")
+        void givenNonRetryableError_whenHandleRecovery_thenSendsToDlq() {
+            // given
+            DecisionLogIngestCommand command = createCommand();
+            RuntimeException error = new RuntimeException("Data error");
+            int attempt = 1;
+
+            given(errorClassifier.isRetryable(error)).willReturn(false);
+
+            // when
+            errorHandler.handleRecovery(command, attempt, error);
+
+            // then
+            then(parkingLotPublisher).should().toDlq(command);
+            then(metrics).should().recordDlqSent(1);
+            then(parkingLotPublisher).should(never()).retry(any(), anyInt());
         }
     }
 

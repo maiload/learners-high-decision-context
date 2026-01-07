@@ -1,12 +1,11 @@
 package com.example.opa.policydecisionlog.command.infra.kafka;
 
 import com.example.opa.policydecisionlog.command.app.dto.DecisionLogIngestCommand;
-import com.example.opa.policydecisionlog.command.infra.kafka.exception.ParkingLotPublishException;
+import com.example.opa.policydecisionlog.command.infra.kafka.exception.KafkaInfraException;
 import com.example.opa.policydecisionlog.shared.config.KafkaCustomProperties;
 import com.example.opa.policydecisionlog.shared.config.KafkaCustomProperties.ProducerSettings;
 import com.example.opa.policydecisionlog.shared.exception.MissingDecisionIdException;
 import com.example.opa.policydecisionlog.shared.kafka.ParkingHeaders;
-import org.apache.kafka.clients.producer.ProducerRecord;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -18,10 +17,11 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.SendResult;
+import org.springframework.messaging.Message;
 import tools.jackson.databind.json.JsonMapper;
 
-import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -40,13 +40,16 @@ class ParkingLotPublisherImplTest {
     private ParkingLotPublisherImpl publisher;
 
     @Mock
-    private KafkaTemplate<String, String> kafkaTemplate;
+    private KafkaTemplate<String, String> parkingKafkaTemplate;
+
+    @Mock
+    private KafkaTemplate<String, String> dlqKafkaTemplate;
 
     @Mock(answer = Answers.RETURNS_DEEP_STUBS)
     private SendResult<String, String> sendResult;
 
     @Captor
-    private ArgumentCaptor<ProducerRecord<String, String>> recordCaptor;
+    private ArgumentCaptor<Message<String>> messageCaptor;
 
     private static final String PARKING_LOT_TOPIC = "decision-logs-parking";
 
@@ -61,7 +64,7 @@ class ParkingLotPublisherImplTest {
                 producerSettings, producerSettings, producerSettings, parkingRecovery,
                 new KafkaCustomProperties.ConsumerBackoff(1000, 2.0, 10000, 30000)
         );
-        publisher = new ParkingLotPublisherImpl(kafkaTemplate, jsonMapper, properties);
+        publisher = new ParkingLotPublisherImpl(parkingKafkaTemplate, dlqKafkaTemplate, jsonMapper, properties);
     }
 
     @Nested
@@ -76,20 +79,20 @@ class ParkingLotPublisherImplTest {
             DecisionLogIngestCommand command = createCommand(decisionId);
             List<DecisionLogIngestCommand> commands = List.of(command);
 
-            given(kafkaTemplate.send(any(ProducerRecord.class)))
+            given(parkingKafkaTemplate.send(any(Message.class)))
                     .willReturn(CompletableFuture.completedFuture(sendResult));
 
             // when
             publisher.publish(commands);
 
             // then
-            then(kafkaTemplate).should().send(recordCaptor.capture());
-            ProducerRecord<String, String> captured = recordCaptor.getValue();
-            assertThat(captured.topic()).isEqualTo(PARKING_LOT_TOPIC);
-            assertThat(captured.key()).isEqualTo(decisionId.toString());
-            assertThat(captured.headers().lastHeader(ParkingHeaders.RETRY_ATTEMPT)).isNotNull();
-            assertThat(captured.headers().lastHeader(ParkingHeaders.NOT_BEFORE)).isNotNull();
-            assertThat(captured.headers().lastHeader(ParkingHeaders.FIRST_FAILURE_TIME)).isNotNull();
+            then(parkingKafkaTemplate).should().send(messageCaptor.capture());
+            Message<String> captured = messageCaptor.getValue();
+            assertThat(captured.getHeaders())
+                    .containsEntry(KafkaHeaders.TOPIC, PARKING_LOT_TOPIC)
+                    .containsEntry(KafkaHeaders.KEY, decisionId.toString())
+                    .containsKey(ParkingHeaders.RETRY_ATTEMPT)
+                    .containsKey(ParkingHeaders.NOT_BEFORE);
         }
 
         @Test
@@ -100,17 +103,16 @@ class ParkingLotPublisherImplTest {
             DecisionLogIngestCommand command = createCommand(decisionId);
             List<DecisionLogIngestCommand> commands = List.of(command);
 
-            given(kafkaTemplate.send(any(ProducerRecord.class)))
+            given(parkingKafkaTemplate.send(any(Message.class)))
                     .willReturn(CompletableFuture.completedFuture(sendResult));
 
             // when
             publisher.publish(commands);
 
             // then
-            then(kafkaTemplate).should().send(recordCaptor.capture());
-            ProducerRecord<String, String> captured = recordCaptor.getValue();
-            String attempt = new String(captured.headers().lastHeader(ParkingHeaders.RETRY_ATTEMPT).value(), StandardCharsets.UTF_8);
-            assertThat(attempt).isEqualTo("0");
+            then(parkingKafkaTemplate).should().send(messageCaptor.capture());
+            Message<String> captured = messageCaptor.getValue();
+            assertThat(captured.getHeaders()).containsEntry(ParkingHeaders.RETRY_ATTEMPT, 0);
         }
 
         @Test
@@ -124,14 +126,14 @@ class ParkingLotPublisherImplTest {
                     createCommand(decisionId2)
             );
 
-            given(kafkaTemplate.send(any(ProducerRecord.class)))
+            given(parkingKafkaTemplate.send(any(Message.class)))
                     .willReturn(CompletableFuture.completedFuture(sendResult));
 
             // when
             publisher.publish(commands);
 
             // then
-            then(kafkaTemplate).should(times(2)).send(any(ProducerRecord.class));
+            then(parkingKafkaTemplate).should(times(2)).send(any(Message.class));
         }
 
         @Test
@@ -145,12 +147,12 @@ class ParkingLotPublisherImplTest {
             assertThatThrownBy(() -> publisher.publish(commands))
                     .isInstanceOf(MissingDecisionIdException.class);
 
-            then(kafkaTemplate).shouldHaveNoInteractions();
+            then(parkingKafkaTemplate).shouldHaveNoInteractions();
         }
 
         @Test
-        @DisplayName("Kafka 전송 실패 시 ParkingLotPublishException 발생")
-        void givenKafkaFailure_whenPublish_thenThrowsParkingLotPublishException() {
+        @DisplayName("Kafka 전송 실패 시 KafkaInfraException 발생")
+        void givenKafkaFailure_whenPublish_thenThrowsKafkaInfraException() {
             // given
             UUID decisionId = UUID.randomUUID();
             DecisionLogIngestCommand command = createCommand(decisionId);
@@ -158,17 +160,17 @@ class ParkingLotPublisherImplTest {
 
             CompletableFuture<SendResult<String, String>> failedFuture = new CompletableFuture<>();
             failedFuture.completeExceptionally(new ExecutionException(new RuntimeException("Kafka error")));
-            given(kafkaTemplate.send(any(ProducerRecord.class)))
+            given(parkingKafkaTemplate.send(any(Message.class)))
                     .willReturn(failedFuture);
 
             // when & then
             assertThatThrownBy(() -> publisher.publish(commands))
-                    .isInstanceOf(ParkingLotPublishException.class);
+                    .isInstanceOf(KafkaInfraException.class);
         }
 
         @Test
-        @DisplayName("Timeout 발생 시 ParkingLotPublishException 발생")
-        void givenTimeout_whenPublish_thenThrowsParkingLotPublishException() {
+        @DisplayName("Timeout 발생 시 KafkaInfraException 발생")
+        void givenTimeout_whenPublish_thenThrowsKafkaInfraException() {
             // given
             UUID decisionId = UUID.randomUUID();
             DecisionLogIngestCommand command = createCommand(decisionId);
@@ -176,12 +178,12 @@ class ParkingLotPublisherImplTest {
 
             CompletableFuture<SendResult<String, String>> timeoutFuture = new CompletableFuture<>();
             timeoutFuture.completeExceptionally(new TimeoutException("Timeout"));
-            given(kafkaTemplate.send(any(ProducerRecord.class)))
+            given(parkingKafkaTemplate.send(any(Message.class)))
                     .willReturn(timeoutFuture);
 
             // when & then
             assertThatThrownBy(() -> publisher.publish(commands))
-                    .isInstanceOf(ParkingLotPublishException.class);
+                    .isInstanceOf(KafkaInfraException.class);
         }
 
         @Test
@@ -191,7 +193,7 @@ class ParkingLotPublisherImplTest {
             publisher.publish(List.of());
 
             // then
-            then(kafkaTemplate).shouldHaveNoInteractions();
+            then(parkingKafkaTemplate).shouldHaveNoInteractions();
         }
     }
 

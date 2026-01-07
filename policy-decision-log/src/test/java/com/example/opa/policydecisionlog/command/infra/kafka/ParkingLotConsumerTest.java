@@ -1,9 +1,9 @@
 package com.example.opa.policydecisionlog.command.infra.kafka;
 
+import com.example.opa.policydecisionlog.command.app.PersistDecisionLogUseCase;
 import com.example.opa.policydecisionlog.command.app.dto.DecisionLogIngestCommand;
-import com.example.opa.policydecisionlog.command.app.port.DecisionLogPersistence;
-import com.example.opa.policydecisionlog.command.app.port.ParkingDlqPublisher;
-import com.example.opa.policydecisionlog.command.app.port.ParkingRetryPublisher;
+import com.example.opa.policydecisionlog.command.app.dto.PersistResult;
+import com.example.opa.policydecisionlog.command.app.port.ParkingLotPublisher;
 import com.example.opa.policydecisionlog.shared.config.KafkaCustomProperties;
 import com.example.opa.policydecisionlog.shared.metrics.DecisionLogMetrics;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,13 +30,10 @@ class ParkingLotConsumerTest {
     private ParkingLotConsumer consumer;
 
     @Mock
-    private DecisionLogPersistence persistence;
+    private PersistDecisionLogUseCase persistDecisionLogUseCase;
 
     @Mock
-    private ParkingRetryPublisher parkingRetryPublisher;
-
-    @Mock
-    private ParkingDlqPublisher parkingDlqPublisher;
+    private ParkingLotPublisher parkingLotPublisher;
 
     @Mock
     private Acknowledgment ack;
@@ -60,7 +57,7 @@ class ParkingLotConsumerTest {
                 new KafkaCustomProperties.ConsumerBackoff(1000, 2.0, 10000, 30000)
         );
         consumer = new ParkingLotConsumer(
-                persistence, parkingRetryPublisher, parkingDlqPublisher,
+                persistDecisionLogUseCase, parkingLotPublisher,
                 jsonMapper, properties, metrics
         );
     }
@@ -78,12 +75,12 @@ class ParkingLotConsumerTest {
             String payload = createPayload(decisionId);
 
             // when
-            consumer.consume(payload, 0, 0L, 0, notBefore, System.currentTimeMillis(), ack);
+            consumer.consume(payload, 0, 0L, 0, notBefore, ack);
 
             // then
             then(ack).should().nack(any(Duration.class));
             then(ack).should(never()).acknowledge();
-            then(persistence).shouldHaveNoInteractions();
+            then(persistDecisionLogUseCase).shouldHaveNoInteractions();
         }
 
         @Test
@@ -94,12 +91,15 @@ class ParkingLotConsumerTest {
             long notBefore = System.currentTimeMillis() - 1000; // 1초 전
             String payload = createPayload(decisionId);
 
+            given(persistDecisionLogUseCase.executeRecovery(any(), anyInt()))
+                    .willReturn(PersistResult.SUCCESS);
+
             // when
-            consumer.consume(payload, 0, 0L, 0, notBefore, System.currentTimeMillis(), ack);
+            consumer.consume(payload, 0, 0L, 0, notBefore, ack);
 
             // then
             then(ack).should().acknowledge();
-            then(persistence).should().saveAll(anyList());
+            then(persistDecisionLogUseCase).should().executeRecovery(any(), eq(0));
         }
     }
 
@@ -116,12 +116,13 @@ class ParkingLotConsumerTest {
             String payload = createPayload(decisionId);
 
             // when - maxRetry=5이므로 5는 초과
-            consumer.consume(payload, 0, 0L, 5, notBefore, System.currentTimeMillis(), ack);
+            consumer.consume(payload, 0, 0L, 5, notBefore, ack);
 
             // then
-            then(parkingDlqPublisher).should().publish(any(DecisionLogIngestCommand.class), eq(5), anyLong());
+            then(parkingLotPublisher).should().toParkingDlq(any(DecisionLogIngestCommand.class));
+            then(metrics).should().recordParkingDlqSent(1);
             then(ack).should().acknowledge();
-            then(persistence).shouldHaveNoInteractions();
+            then(persistDecisionLogUseCase).shouldHaveNoInteractions();
         }
 
         @Test
@@ -132,12 +133,15 @@ class ParkingLotConsumerTest {
             long notBefore = System.currentTimeMillis() - 1000;
             String payload = createPayload(decisionId);
 
+            given(persistDecisionLogUseCase.executeRecovery(any(), anyInt()))
+                    .willReturn(PersistResult.SUCCESS);
+
             // when
-            consumer.consume(payload, 0, 0L, 2, notBefore, System.currentTimeMillis(), ack);
+            consumer.consume(payload, 0, 0L, 2, notBefore, ack);
 
             // then
-            then(parkingDlqPublisher).shouldHaveNoInteractions();
-            then(persistence).should().saveAll(anyList());
+            then(parkingLotPublisher).should(never()).toParkingDlq(any());
+            then(persistDecisionLogUseCase).should().executeRecovery(any(), eq(2));
         }
     }
 
@@ -146,39 +150,42 @@ class ParkingLotConsumerTest {
     class DbSave {
 
         @Test
-        @DisplayName("DB 저장 성공 시 메트릭 기록하고 ack")
-        void givenDbSaveSuccess_whenConsume_thenRecordMetricsAndAck() {
+        @DisplayName("복구 성공 시 메트릭 기록하고 ack")
+        void givenRecoverySuccess_whenConsume_thenRecordMetricsAndAck() {
             // given
             UUID decisionId = UUID.randomUUID();
             long notBefore = System.currentTimeMillis() - 1000;
             String payload = createPayload(decisionId);
 
+            given(persistDecisionLogUseCase.executeRecovery(any(), anyInt()))
+                    .willReturn(PersistResult.SUCCESS);
+
             // when
-            consumer.consume(payload, 0, 0L, 0, notBefore, System.currentTimeMillis(), ack);
+            consumer.consume(payload, 0, 0L, 0, notBefore, ack);
 
             // then
-            then(persistence).should().saveAll(anyList());
+            then(persistDecisionLogUseCase).should().executeRecovery(any(), eq(0));
             then(metrics).should().recordParkingRecovered(1);
-            then(metrics).should().recordDbSave(true, 1);
             then(ack).should().acknowledge();
         }
 
         @Test
-        @DisplayName("DB 저장 실패 시 parking으로 재발행하고 ack")
-        void givenDbSaveFails_whenConsume_thenRepublishAndAck() {
+        @DisplayName("복구 PARKED 반환 시 ack (재시도로 parking에 전송됨)")
+        void givenRecoveryParked_whenConsume_thenAck() {
             // given
             UUID decisionId = UUID.randomUUID();
             long notBefore = System.currentTimeMillis() - 1000;
-            long firstFailureTime = System.currentTimeMillis() - 120000;
             String payload = createPayload(decisionId);
 
-            willThrow(new RuntimeException("DB error")).given(persistence).saveAll(anyList());
+            given(persistDecisionLogUseCase.executeRecovery(any(), anyInt()))
+                    .willReturn(PersistResult.PARKED);
 
             // when
-            consumer.consume(payload, 0, 0L, 1, notBefore, firstFailureTime, ack);
+            consumer.consume(payload, 0, 0L, 1, notBefore, ack);
 
             // then
-            then(parkingRetryPublisher).should().publish(any(DecisionLogIngestCommand.class), eq(2), eq(firstFailureTime));
+            then(persistDecisionLogUseCase).should().executeRecovery(any(), eq(1));
+            then(metrics).should(never()).recordParkingRecovered(anyInt());
             then(ack).should().acknowledge();
         }
     }

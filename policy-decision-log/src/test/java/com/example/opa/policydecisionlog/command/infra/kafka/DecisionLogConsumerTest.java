@@ -2,8 +2,7 @@ package com.example.opa.policydecisionlog.command.infra.kafka;
 
 import com.example.opa.policydecisionlog.command.app.PersistDecisionLogUseCase;
 import com.example.opa.policydecisionlog.command.app.dto.PersistResult;
-import com.example.opa.policydecisionlog.command.app.error.DataErrorException;
-import com.example.opa.policydecisionlog.command.infra.kafka.exception.ConsumerProcessingException;
+import com.example.opa.policydecisionlog.command.infra.kafka.exception.KafkaInfraException;
 import com.example.opa.policydecisionlog.shared.metrics.DecisionLogMetrics;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.jupiter.api.BeforeEach;
@@ -96,8 +95,8 @@ class DecisionLogConsumerTest {
         }
 
         @Test
-        @DisplayName("persist FAILED 반환 시 ConsumerProcessingException 발생")
-        void givenPersistFails_whenConsume_thenThrowsConsumerProcessingException() {
+        @DisplayName("persist FAILED 반환 시 KafkaInfraException 발생")
+        void givenPersistFails_whenConsume_thenThrowsKafkaInfraException() {
             // given
             List<ConsumerRecord<String, String>> records = createConsumerRecords();
 
@@ -105,27 +104,8 @@ class DecisionLogConsumerTest {
 
             // when & then
             assertThatThrownBy(() -> consumer.consume(records, acknowledgment))
-                    .isInstanceOf(ConsumerProcessingException.class)
+                    .isInstanceOf(KafkaInfraException.class)
                     .hasMessageContaining("Persist failed");
-
-            then(acknowledgment).shouldHaveNoInteractions();
-        }
-
-        @Test
-        @DisplayName("DataErrorException 발생 시 해당 레코드로 BatchListenerFailedException 발생")
-        void givenDataError_whenConsume_thenThrowsBatchListenerFailedExceptionWithRecord() {
-            // given
-            List<ConsumerRecord<String, String>> records = createConsumerRecords();
-
-            DataErrorException dataError = new DataErrorException(1, new RuntimeException("Data error"));
-            given(persistDecisionLogUseCase.execute(anyList())).willThrow(dataError);
-
-            // when & then
-            assertThatThrownBy(() -> consumer.consume(records, acknowledgment))
-                    .isInstanceOf(BatchListenerFailedException.class)
-                    .hasMessageContaining("Data error")
-                    .extracting(e -> ((BatchListenerFailedException) e).getRecord())
-                    .isEqualTo(records.get(1));
 
             then(acknowledgment).shouldHaveNoInteractions();
         }
