@@ -647,6 +647,19 @@
           "legendFormat": "parking_recovered",
           "range": true,
           "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "rate(decision_log_parking_dlq_sent_total[5m])",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "parking_dlq_sent",
+          "range": true,
+          "refId": "D"
         }
       ],
       "title": "DLQ / Parking Throughput",

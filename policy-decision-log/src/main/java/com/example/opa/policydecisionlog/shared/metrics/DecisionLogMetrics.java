@@ -27,6 +27,7 @@ public class DecisionLogMetrics {
 
     // DLQ / Parking
     private final Counter dlqSent;
+    private final Counter parkingDlqSent;
     private final Counter parkingSent;
     private final Counter parkingRecovered;
 
@@ -68,6 +69,10 @@ public class DecisionLogMetrics {
         // DLQ / Parking
         this.dlqSent = Counter.builder(PREFIX + ".dlq.sent")
                 .description("Messages sent to DLQ")
+                .register(registry);
+
+        this.parkingDlqSent = Counter.builder(PREFIX + ".parking.dlq.sent")
+                .description("Messages sent to parking DLQ (max retry exceeded)")
                 .register(registry);
 
         this.parkingSent = Counter.builder(PREFIX + ".parking.sent")
@@ -121,6 +126,10 @@ public class DecisionLogMetrics {
 
     public void recordDlqSent(int count) {
         dlqSent.increment(count);
+    }
+
+    public void recordParkingDlqSent(int count) {
+        parkingDlqSent.increment(count);
     }
 
     public void recordParkingSent(int count) {
