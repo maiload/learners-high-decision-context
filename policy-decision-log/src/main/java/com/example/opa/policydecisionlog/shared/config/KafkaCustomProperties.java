@@ -8,9 +8,11 @@ public record KafkaCustomProperties(
         String topic,
         String dlqTopic,
         String parkingLotTopic,
+        String parkingDlqTopic,
         ProducerSettings fastProducer,
         ProducerSettings parkingProducer,
         ProducerSettings dlqProducer,
+        ParkingRecoverySettings parkingRecovery,
         ConsumerBackoff consumerBackoff
 ) {
     public record ProducerSettings(
@@ -30,6 +32,29 @@ public record KafkaCustomProperties(
 
         public int getTimeoutMs() {
             return deliveryTimeoutMs - GET_TIMEOUT_MARGIN_MS;
+        }
+    }
+
+    public record ParkingRecoverySettings(
+            int maxRetryAttempts,
+            long initialBackoffMs,
+            double backoffMultiplier,
+            long maxBackoffMs
+    ) {
+        public ParkingRecoverySettings {
+            if (maxRetryAttempts <= 0) maxRetryAttempts = 5;
+            if (initialBackoffMs <= 0) initialBackoffMs = 60000;  // 1분
+            if (backoffMultiplier <= 0) backoffMultiplier = 2.0;
+            if (maxBackoffMs <= 0) maxBackoffMs = 3600000;  // 1시간
+        }
+
+        public long calculateNextBackoff(int attempt) {
+            long backoff = (long) (initialBackoffMs * Math.pow(backoffMultiplier, attempt));
+            return Math.min(backoff, maxBackoffMs);
+        }
+
+        public boolean isMaxRetryExceeded(int attempt) {
+            return attempt >= maxRetryAttempts;
         }
     }
 

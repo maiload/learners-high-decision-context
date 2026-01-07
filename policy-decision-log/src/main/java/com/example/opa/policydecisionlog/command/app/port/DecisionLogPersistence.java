@@ -6,5 +6,7 @@ import java.util.List;
 
 public interface DecisionLogPersistence {
 
+    void save(DecisionLogIngestCommand command);
+
     void saveAll(List<DecisionLogIngestCommand> commands);
 }

@@ -33,6 +33,12 @@ public class DecisionLogPersistenceImpl implements DecisionLogPersistence {
             """;
 
     @Override
+    public void save(DecisionLogIngestCommand command) {
+        DecisionLogEntity entity = mapper.toEntity(command);
+        jdbcTemplate.update(INSERT_SQL, toParameterSource(entity));
+    }
+
+    @Override
     public void saveAll(List<DecisionLogIngestCommand> commands) {
         List<DecisionLogEntity> entities = commands.stream()
                 .map(mapper::toEntity)

@@ -3,8 +3,7 @@ package com.example.opa.policydecisionlog.command.infra.kafka;
 import com.example.opa.policydecisionlog.command.app.PersistDecisionLogUseCase;
 import com.example.opa.policydecisionlog.command.app.dto.DecisionLogIngestCommand;
 import com.example.opa.policydecisionlog.command.app.dto.PersistResult;
-import com.example.opa.policydecisionlog.command.app.error.DataErrorException;
-import com.example.opa.policydecisionlog.command.infra.kafka.exception.ConsumerProcessingException;
+import com.example.opa.policydecisionlog.command.infra.kafka.exception.KafkaInfraException;
 import com.example.opa.policydecisionlog.shared.metrics.DecisionLogMetrics;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,8 +16,10 @@ import tools.jackson.databind.json.JsonMapper;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Slf4j
 @Component
@@ -37,7 +38,7 @@ public class DecisionLogConsumer {
         List<DecisionLogIngestCommand> commands = parseRecords(records);
 
         if (!commands.isEmpty()) {
-            persistCommands(commands, records);
+            persistCommands(commands);
             recordE2ELatency(commands);
         }
 
@@ -65,25 +66,21 @@ public class DecisionLogConsumer {
         return commands;
     }
 
-    private void persistCommands(List<DecisionLogIngestCommand> commands,
-                                  List<ConsumerRecord<String, String>> records) {
-        try {
-            PersistResult result = persistDecisionLogUseCase.execute(commands);
-            if (result == PersistResult.FAILED) {
-                throw new ConsumerProcessingException("Persist failed after retries and parking failed");
-            }
-        } catch (DataErrorException e) {
-            ConsumerRecord<String, String> failedRecord = records.get(e.getFailedIndex());
-            log.warn("Data error detected, sending to DLQ: partition={}, offset={}",
-                    failedRecord.partition(), failedRecord.offset());
-            throw new BatchListenerFailedException("Data error", e, failedRecord);
+    private void persistCommands(List<DecisionLogIngestCommand> commands) {
+        PersistResult result = persistDecisionLogUseCase.execute(commands);
+        if (result == PersistResult.FAILED) {
+            throw new KafkaInfraException("Persist failed after retries and parking failed");
         }
     }
 
     private void recordE2ELatency(List<DecisionLogIngestCommand> commands) {
-        commands.stream()
-                .filter(cmd -> cmd.timestamp() != null)
-                .findFirst()
-                .ifPresent(cmd -> metrics.recordEndToEndLatency(cmd.timestamp().toInstant()));
+        Instant oldest = commands.stream()
+                .map(DecisionLogIngestCommand::timestamp)
+                .filter(Objects::nonNull)
+                .map(OffsetDateTime::toInstant)
+                .min(Instant::compareTo)
+                .orElse(null);
+
+        metrics.recordEndToEndLatency(oldest);
     }
 }

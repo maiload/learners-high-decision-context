@@ -2,7 +2,6 @@ package com.example.opa.policydecisionlog.command.app;
 
 import com.example.opa.policydecisionlog.command.app.dto.DecisionLogIngestCommand;
 import com.example.opa.policydecisionlog.command.app.dto.PersistResult;
-import com.example.opa.policydecisionlog.command.app.error.DataErrorException;
 import com.example.opa.policydecisionlog.command.app.error.ErrorHandler;
 import com.example.opa.policydecisionlog.command.app.port.DecisionLogPersistence;
 import com.example.opa.policydecisionlog.shared.metrics.DecisionLogMetrics;
@@ -31,6 +30,22 @@ public class PersistDecisionLogUseCase {
         return saveWithRetry(commands);
     }
 
+    @Transactional
+    public PersistResult executeRecovery(DecisionLogIngestCommand command, int attempt) {
+        log.debug("Recovery persisting decision log to database: decisionId={}, attempt={}",
+                command.decisionId(), attempt);
+        try {
+            persistence.save(command);
+            metrics.recordDbSave(true, 1);
+            return PersistResult.SUCCESS;
+        } catch (Exception e) {
+            log.warn("Recovery DB save failed: decisionId={}, attempt={}", command.decisionId(), attempt, e);
+            metrics.recordDbSave(false, 1);
+            errorHandler.handleRecovery(command, attempt, e);
+            return PersistResult.PARKED;
+        }
+    }
+
     private PersistResult saveWithRetry(List<DecisionLogIngestCommand> commands) {
         for (int attempt = 0; attempt < MAX_RETRIES; attempt++) {
             try {
@@ -55,8 +70,6 @@ public class PersistDecisionLogUseCase {
         try {
             errorHandler.handle(commands, e);
             return PersistResult.PARKED;
-        } catch (DataErrorException ex) {
-            throw ex;
         } catch (Exception ex) {
             log.error("Error handler failed, cannot park commands", ex);
             return PersistResult.FAILED;

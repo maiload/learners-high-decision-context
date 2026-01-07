@@ -38,6 +38,7 @@ opa:
     topic: decision-logs
     dlq-topic: decision-logs.dlq
     parking-lot-topic: decision-logs.parking-lot
+    parking-dlq-topic: decision-logs.parking-lot.dlq
     fast-producer:
       retries: 1
       delivery-timeout-ms: 8000
@@ -53,6 +54,11 @@ opa:
       delivery-timeout-ms: 30000
       request-timeout-ms: 12000
       max-block-ms: 5000
+    parking-recovery:
+      max-retry-attempts: 5
+      initial-backoff-ms: 60000      # 1분
+      backoff-multiplier: 2.0
+      max-backoff-ms: 3600000        # 1시간
     consumer-backoff:
       initial-interval-ms: 1000
       multiplier: 2.0

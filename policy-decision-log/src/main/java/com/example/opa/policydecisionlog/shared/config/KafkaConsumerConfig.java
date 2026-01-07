@@ -1,5 +1,7 @@
 package com.example.opa.policydecisionlog.shared.config;
 
+import com.example.opa.policydecisionlog.command.app.dto.InfrastructureFailureEvent;
+import com.example.opa.policydecisionlog.command.infra.kafka.exception.KafkaInfraException;
 import com.example.opa.policydecisionlog.command.app.port.InfrastructureFailureWriter;
 import com.example.opa.policydecisionlog.shared.metrics.DecisionLogMetrics;
 import lombok.extern.slf4j.Slf4j;
@@ -16,7 +18,6 @@ import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.kafka.listener.BatchListenerFailedException;
 import org.springframework.kafka.listener.CommonErrorHandler;
 import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
@@ -44,6 +45,13 @@ public class KafkaConsumerConfig {
     @Bean
     public ConsumerFactory<String, String> consumerFactory() {
         return new DefaultKafkaConsumerFactory<>(kafkaProperties.buildConsumerProperties());
+    }
+
+    @Bean
+    public ConsumerFactory<String, String> parkingConsumerFactory() {
+        var props = kafkaProperties.buildConsumerProperties();
+        props.put("group.id", kafkaProperties.getConsumer().getGroupId() + "-parking");
+        return new DefaultKafkaConsumerFactory<>(props);
     }
 
     @Bean
@@ -76,7 +84,14 @@ public class KafkaConsumerConfig {
     @Bean
     public DefaultErrorHandler infraErrorHandler(InfrastructureFailureWriter failureWriter) {
         DefaultErrorHandler handler = new DefaultErrorHandler(
-                failureWriter::write,
+                (record, exception) -> failureWriter.write(InfrastructureFailureEvent.of(
+                        record.topic(),
+                        record.partition(),
+                        record.offset(),
+                        record.key() != null ? record.key().toString() : null,
+                        record.value() != null ? record.value().toString() : null,
+                        exception.getMessage()
+                )),
                 customProperties.consumerBackoff().toExponentialBackOff()
         );
         handler.setRetryListeners((rec, ex, deliveryAttempt) ->
@@ -101,6 +116,20 @@ public class KafkaConsumerConfig {
         return factory;
     }
 
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, String> parkingKafkaListenerContainerFactory(
+            DefaultErrorHandler dlqErrorHandler,
+            DefaultErrorHandler infraErrorHandler
+    ) {
+        ConcurrentKafkaListenerContainerFactory<String, String> factory =
+                new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(parkingConsumerFactory());
+        factory.setBatchListener(false);
+        factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL);
+        factory.setCommonErrorHandler(compositeErrorHandler(dlqErrorHandler, infraErrorHandler));
+        return factory;
+    }
+
     private CommonErrorHandler compositeErrorHandler(
             DefaultErrorHandler dlqHandler,
             DefaultErrorHandler infraHandler
@@ -112,16 +141,26 @@ public class KafkaConsumerConfig {
             public void handleBatch(Exception exception, ConsumerRecords<?, ?> records,
                                     Consumer<?, ?> consumer, MessageListenerContainer container,
                                     Runnable invokeListener) {
-                if (isBatchListenerFailedException(exception)) {
-                    dlqHandler.handleBatch(exception, records, consumer, container, invokeListener);
-                } else {
+                if (isInfraError(exception)) {
                     infraHandler.handleBatch(exception, records, consumer, container, invokeListener);
+                } else {
+                    dlqHandler.handleBatch(exception, records, consumer, container, invokeListener);
                 }
             }
 
-            private boolean isBatchListenerFailedException(Exception exception) {
-                return exception instanceof BatchListenerFailedException
-                        || (exception.getCause() instanceof BatchListenerFailedException);
+            @Override
+            @NullMarked
+            public boolean handleOne(Exception exception, ConsumerRecord<?, ?> record,
+                                     Consumer<?, ?> consumer, MessageListenerContainer container) {
+                if (isInfraError(exception)) {
+                    return infraHandler.handleOne(exception, record, consumer, container);
+                } else {
+                    return dlqHandler.handleOne(exception, record, consumer, container);
+                }
+            }
+
+            private boolean isInfraError(Exception exception) {
+                return exception instanceof KafkaInfraException;
             }
         };
     }
