@@ -48,9 +48,11 @@ class DecisionLogEventPublisherImplTest {
     void setUp() {
         JsonMapper jsonMapper = JsonMapper.builder().build();
         ProducerSettings producerSettings = new ProducerSettings(3, 30000, 10000, 5000);
+        KafkaCustomProperties.ParkingRecoverySettings parkingRecovery =
+                new KafkaCustomProperties.ParkingRecoverySettings(5, 60000, 2.0, 3600000);
         KafkaCustomProperties properties = new KafkaCustomProperties(
-                TOPIC, "decision-logs-dlq", "decision-logs-parking",
-                producerSettings, producerSettings, producerSettings,
+                TOPIC, "decision-logs-dlq", "decision-logs-parking", "decision-logs-parking-dlq",
+                producerSettings, producerSettings, producerSettings, parkingRecovery,
                 new KafkaCustomProperties.ConsumerBackoff(1000, 2.0, 10000, 30000)
         );
         publisher = new DecisionLogEventPublisherImpl(kafkaTemplate, jsonMapper, properties, metrics);
