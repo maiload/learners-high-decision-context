@@ -49,10 +49,10 @@ Spring Kafka의 `DefaultErrorHandler`와 `DeadLetterPublishingRecoverer`를 활�
 
 ```
 compositeErrorHandler
-├── dlqErrorHandler (BatchListenerFailedException)
-│   └── DeadLetterPublishingRecoverer → DLQ 토픽
-└── infraErrorHandler (그 외 예외)
-    └── ConsumerRecordRecoverer → 파일 기록
+├── infraErrorHandler (KafkaInfraException)
+│   └── InfrastructureFailureWriter → 파일 기록
+└── dlqErrorHandler (그 외 예외)
+    └── DeadLetterPublishingRecoverer → DLQ 토픽
 ```
 
 #### 파싱 실패
@@ -73,15 +73,18 @@ compositeErrorHandler
   - 57014: Query canceled (timeout)
   - 53300: Too many connections
   - 57Pxx: Admin/crash shutdown
-- Non-retryable (데이터 에러): Bisect로 문제 레코드 탐색 후 `DataErrorException` 발생
+- Non-retryable (데이터 에러): Bisect로 문제 레코드 탐색 후 DLQ 직접 전송
   - 배치를 반씩 나눠가며 실패 레코드만 격리
   - 정상 레코드는 저장 성공
-  - `BatchListenerFailedException`으로 변환되어 DLQ 전송
+  - 실패 레코드는 `parkingLotPublisher.toDlq()`로 직접 DLQ 전송
 
 #### Kafka 에러 핸들러 (Composite)
-- `BatchListenerFailedException` 발생 시: `dlqErrorHandler` 처리
-- 그 외 예외 발생 시: `infraErrorHandler` 처리
-- `infraErrorHandler`는 재시도 소진 후 파일로 기록 (ADR012 참조)
+- `KafkaInfraException` 발생 시: `infraErrorHandler` 처리
+  - Kafka 자체 장애로 parking/DLQ 발행 실패 시 발생
+  - 재시도 소진 후 파일로 기록 (ADR012 참조)
+- 그 외 예외 발생 시: `dlqErrorHandler` 처리
+  - 파싱 에러, 데이터 에러 등
+  - 해당 레코드만 DLQ로 전송
 
 #### Offset ack
 - `AckMode.MANUAL` 사용
@@ -90,8 +93,9 @@ compositeErrorHandler
 
 #### Kafka 토픽
 - 원본 토픽: `decision-logs`
-- DLQ 토픽: `decision-logs.dlq`
-- Parking Lot 토픽: `decision-logs.parking-lot`
+- DLQ 토픽: `decision-logs-dlq`
+- Parking Lot 토픽: `decision-logs-parking`
+- Parking DLQ 토픽: `decision-logs-parking-dlq`
 
 #### DLQ 메시지 포함 정보
 - 원본 raw 메시지
@@ -110,5 +114,5 @@ compositeErrorHandler
 
 트레이드 오프:
 - Kafka 자체 장애 시에는 DLQ 전송도 실패할 수 있음 (ADR012에서 폴백 처리)
-- Parking Lot 재처리 정책은 별도 Consumer 또는 스케줄러로 구현 필요
+- Parking Lot 복구 처리는 별도 Consumer로 구현 (ADR013 참조)
 - DLQ/Parking Lot 메시지의 보관(retention), 모니터링 절차는 운영 단계에서 정의 필요
