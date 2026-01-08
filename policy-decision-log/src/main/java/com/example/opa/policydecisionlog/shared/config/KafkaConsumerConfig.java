@@ -84,13 +84,13 @@ public class KafkaConsumerConfig {
     @Bean
     public DefaultErrorHandler infraErrorHandler(InfrastructureFailureWriter failureWriter) {
         DefaultErrorHandler handler = new DefaultErrorHandler(
-                (record, exception) -> failureWriter.write(InfrastructureFailureEvent.of(
-                        record.topic(),
-                        record.partition(),
-                        record.offset(),
-                        record.key() != null ? record.key().toString() : null,
-                        record.value() != null ? record.value().toString() : null,
-                        exception.getMessage()
+                (rec, ex) -> failureWriter.write(InfrastructureFailureEvent.of(
+                        rec.topic(),
+                        rec.partition(),
+                        rec.offset(),
+                        rec.key() != null ? rec.key().toString() : null,
+                        rec.value() != null ? rec.value().toString() : null,
+                        ex.getMessage()
                 )),
                 customProperties.consumerBackoff().toExponentialBackOff()
         );
@@ -138,24 +138,24 @@ public class KafkaConsumerConfig {
 
             @Override
             @NullMarked
-            public void handleBatch(Exception exception, ConsumerRecords<?, ?> records,
+            public void handleBatch(Exception exception, ConsumerRecords<?, ?> consumerRecords,
                                     Consumer<?, ?> consumer, MessageListenerContainer container,
                                     Runnable invokeListener) {
                 if (isInfraError(exception)) {
-                    infraHandler.handleBatch(exception, records, consumer, container, invokeListener);
+                    infraHandler.handleBatch(exception, consumerRecords, consumer, container, invokeListener);
                 } else {
-                    dlqHandler.handleBatch(exception, records, consumer, container, invokeListener);
+                    dlqHandler.handleBatch(exception, consumerRecords, consumer, container, invokeListener);
                 }
             }
 
             @Override
             @NullMarked
-            public boolean handleOne(Exception exception, ConsumerRecord<?, ?> record,
+            public boolean handleOne(Exception exception, ConsumerRecord<?, ?> consumerRecord,
                                      Consumer<?, ?> consumer, MessageListenerContainer container) {
                 if (isInfraError(exception)) {
-                    return infraHandler.handleOne(exception, record, consumer, container);
+                    return infraHandler.handleOne(exception, consumerRecord, consumer, container);
                 } else {
-                    return dlqHandler.handleOne(exception, record, consumer, container);
+                    return dlqHandler.handleOne(exception, consumerRecord, consumer, container);
                 }
             }
 
