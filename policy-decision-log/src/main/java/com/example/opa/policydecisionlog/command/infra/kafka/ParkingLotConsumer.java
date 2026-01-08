@@ -15,6 +15,7 @@ import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.time.Duration;
@@ -58,7 +59,9 @@ public class ParkingLotConsumer {
 
         DecisionLogIngestCommand command;
         try {
-            command = jsonMapper.readValue(payload, DecisionLogIngestCommand.class);
+            JsonNode rawJson = jsonMapper.readTree(payload);
+            command = jsonMapper.readValue(payload, DecisionLogIngestCommand.class)
+                    .withRaw(rawJson);
         } catch (RuntimeException e) {
             log.error("Failed to parse parking message, sending to DLQ: partition={}, offset={}", partition, offset, e);
             throw e;

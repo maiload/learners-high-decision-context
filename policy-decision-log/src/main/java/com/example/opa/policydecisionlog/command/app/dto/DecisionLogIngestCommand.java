@@ -1,5 +1,6 @@
 package com.example.opa.policydecisionlog.command.app.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import tools.jackson.databind.JsonNode;
@@ -18,7 +19,7 @@ public record DecisionLogIngestCommand(
         JsonNode bundles,
         JsonNode input,
         JsonNode result,
-        JsonNode raw
+        @JsonIgnore JsonNode raw
 ) {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record Labels(
@@ -33,5 +34,12 @@ public record DecisionLogIngestCommand(
 
     public String opaVersion() {
         return labels != null ? labels.version() : null;
+    }
+
+    public DecisionLogIngestCommand withRaw(JsonNode rawJson) {
+        return new DecisionLogIngestCommand(
+                decisionId, timestamp, path, requestedBy, reqId,
+                labels, bundles, input, result, rawJson
+        );
     }
 }

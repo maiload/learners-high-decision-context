@@ -12,6 +12,7 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.listener.BatchListenerFailedException;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Component;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.time.Duration;
@@ -52,9 +53,10 @@ public class DecisionLogConsumer {
 
         for (ConsumerRecord<String, String> consumerRecord : records) {
             try {
-                DecisionLogIngestCommand command = jsonMapper.readValue(
-                        consumerRecord.value(), DecisionLogIngestCommand.class
-                );
+                String jsonValue = consumerRecord.value();
+                JsonNode rawJson = jsonMapper.readTree(jsonValue);
+                DecisionLogIngestCommand command = jsonMapper.readValue(jsonValue, DecisionLogIngestCommand.class)
+                        .withRaw(rawJson);
                 commands.add(command);
             } catch (Exception e) {
                 log.error("Failed to parse message: partition={}, offset={}",
