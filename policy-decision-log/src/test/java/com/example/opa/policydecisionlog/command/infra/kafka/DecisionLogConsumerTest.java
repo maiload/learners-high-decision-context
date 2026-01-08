@@ -1,6 +1,6 @@
 package com.example.opa.policydecisionlog.command.infra.kafka;
 
-import com.example.opa.policydecisionlog.command.app.PersistDecisionLogUseCase;
+import com.example.opa.policydecisionlog.command.app.usecase.PersistDecisionLogUseCase;
 import com.example.opa.policydecisionlog.command.app.dto.PersistResult;
 import com.example.opa.policydecisionlog.command.infra.kafka.exception.KafkaInfraException;
 import com.example.opa.policydecisionlog.shared.metrics.DecisionLogMetrics;

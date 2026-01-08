@@ -1,4 +1,4 @@
-package com.example.opa.policydecisionlog.query.app;
+package com.example.opa.policydecisionlog.query.app.port;
 
 import com.example.opa.policydecisionlog.query.app.dto.DecisionLogReadModel;
 import com.example.opa.policydecisionlog.query.app.dto.DecisionLogSearchQuery;

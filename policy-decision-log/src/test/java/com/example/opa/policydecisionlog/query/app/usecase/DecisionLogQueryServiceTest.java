@@ -1,8 +1,10 @@
-package com.example.opa.policydecisionlog.query.app;
+package com.example.opa.policydecisionlog.query.app.usecase;
 
+import com.example.opa.policydecisionlog.query.app.DecisionContextAssembler;
 import com.example.opa.policydecisionlog.query.app.dto.CursorPage;
 import com.example.opa.policydecisionlog.query.app.dto.DecisionLogReadModel;
 import com.example.opa.policydecisionlog.query.app.dto.DecisionLogSearchQuery;
+import com.example.opa.policydecisionlog.query.app.port.DecisionLogQueryRepository;
 import com.example.opa.policydecisionlog.query.fixture.DecisionLogReadModelFixture;
 import com.example.opa.policydecisionlog.shared.exception.DecisionNotFoundException;
 import org.junit.jupiter.api.DisplayName;

@@ -1,6 +1,6 @@
 package com.example.opa.policydecisionlog.command.api;
 
-import com.example.opa.policydecisionlog.command.app.PublishDecisionLogUseCase;
+import com.example.opa.policydecisionlog.command.app.usecase.PublishDecisionLogUseCase;
 import com.example.opa.policydecisionlog.shared.metrics.DecisionLogMetrics;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;

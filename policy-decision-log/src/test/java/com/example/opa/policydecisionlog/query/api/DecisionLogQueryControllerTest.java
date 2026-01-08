@@ -1,7 +1,7 @@
 package com.example.opa.policydecisionlog.query.api;
 
 import com.example.opa.policydecisionlog.query.api.mapper.RequestToQueryMapper;
-import com.example.opa.policydecisionlog.query.app.DecisionLogQueryService;
+import com.example.opa.policydecisionlog.query.app.usecase.DecisionLogQueryService;
 import com.example.opa.policydecisionlog.query.app.dto.CursorPage;
 import com.example.opa.policydecisionlog.query.app.dto.DecisionLogReadModel;
 import com.example.opa.policydecisionlog.query.app.dto.DecisionLogSearchQuery;

@@ -1,4 +1,4 @@
-package com.example.opa.policydecisionlog.command.app;
+package com.example.opa.policydecisionlog.command.app.usecase;
 
 import com.example.opa.policydecisionlog.command.app.dto.DecisionLogIngestCommand;
 import com.example.opa.policydecisionlog.command.app.dto.PersistResult;

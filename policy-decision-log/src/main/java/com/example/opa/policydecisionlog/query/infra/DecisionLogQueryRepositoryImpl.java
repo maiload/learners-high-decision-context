@@ -1,6 +1,6 @@
 package com.example.opa.policydecisionlog.query.infra;
 
-import com.example.opa.policydecisionlog.query.app.DecisionLogQueryRepository;
+import com.example.opa.policydecisionlog.query.app.port.DecisionLogQueryRepository;
 import com.example.opa.policydecisionlog.query.app.dto.DecisionLogReadModel;
 import com.example.opa.policydecisionlog.query.app.dto.DecisionLogSearchQuery;
 import com.example.opa.policydecisionlog.query.infra.mapper.RowToReadModelMapper;

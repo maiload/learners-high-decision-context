@@ -11,18 +11,24 @@
 
 ## 2. Package Structure
 - 레이어별 의존성 방향: `api` → `app` ← `infra`
-- Repository 인터페이스는 `app/`에, 구현체는 `infra/`에 위치 (의존성 역전)
+- Port(인터페이스)는 `app/port/`에, 구현체는 `infra/`에 위치 (의존성 역전)
 - command, query 는 독립적인 패키지 구조를 가짐
 ```
 command/
-- api/          # Controller, Request DTO, Mapper, Filter
-- app/          # Service, Command DTO, Repository 인터페이스
-- infra/        # Repository 구현체, Entity, Mapper
+├── api/            # Controller, Request DTO, Mapper, Filter
+├── app/
+│   ├── usecase/    # UseCase
+│   ├── port/       # Port 인터페이스
+│   ├── dto/        # Command DTO
+└── infra/          # Adapter 구현체, Entity, Mapper
 
 query/
-- api/          # Controller, Response DTO, Mapper
-- app/          # Service, Query DTO, Repository 인터페이스, ReadModel
-- infra/        # Repository 구현체, Projection DTO, Mapper
+├── api/            # Controller, Response DTO, Mapper
+├── app/
+│   ├── usecase/    # UseCase
+│   ├── port/       # Port 인터페이스
+│   ├── dto/        # Query DTO, ReadModel
+└── infra/          # Adapter 구현체, Mapper
 ```
 
 ## 3. Model Separation
@@ -64,7 +70,7 @@ command/infra/
 
 ### Query Side Ports
 ```
-query/app/
+query/app/port/
 └── DecisionLogQueryRepository  # DB 조회 (인터페이스)
 ```
 

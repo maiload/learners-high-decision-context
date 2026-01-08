@@ -6,7 +6,7 @@ import com.example.opa.policydecisionlog.query.api.dto.DecisionLogCursorResponse
 import com.example.opa.policydecisionlog.query.api.dto.DecisionLogResponse;
 import com.example.opa.policydecisionlog.query.api.dto.DecisionLogSearchRequest;
 import com.example.opa.policydecisionlog.query.api.mapper.RequestToQueryMapper;
-import com.example.opa.policydecisionlog.query.app.DecisionLogQueryService;
+import com.example.opa.policydecisionlog.query.app.usecase.DecisionLogQueryService;
 import com.example.opa.policydecisionlog.shared.api.ErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;

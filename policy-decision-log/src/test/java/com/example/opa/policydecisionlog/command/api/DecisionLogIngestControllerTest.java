@@ -1,6 +1,6 @@
 package com.example.opa.policydecisionlog.command.api;
 
-import com.example.opa.policydecisionlog.command.app.PublishDecisionLogUseCase;
+import com.example.opa.policydecisionlog.command.app.usecase.PublishDecisionLogUseCase;
 import com.example.opa.policydecisionlog.shared.config.GzipProperties;
 import com.example.opa.policydecisionlog.shared.metrics.DecisionLogMetrics;
 import org.junit.jupiter.api.DisplayName;
