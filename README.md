@@ -294,6 +294,8 @@ curl http://localhost:8080/decisions/9d258b04-142c-4033-b5b6-cb01c08ef8cf/contex
 
 ### Grafana 대시보드
 
+대시보드가 프로비저닝으로 설정되어 있어 별도 설정 없이 바로 확인 가능합니다.
+
 ```
 http://localhost:3000
 ```
