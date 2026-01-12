@@ -7,6 +7,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import java.net.ConnectException;
+import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.sql.SQLException;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -25,7 +28,7 @@ class ErrorClassifierTest {
     class IsRetryable {
 
         @Test
-        @DisplayName("SQLException이 아니면 false 반환")
+        @DisplayName("SQLException도 네트워크 예외도 아니면 false 반환")
         void givenNonSqlException_whenIsRetryable_thenReturnsFalse() {
             // given
             RuntimeException ex = new RuntimeException("Some error");
@@ -35,6 +38,60 @@ class ErrorClassifierTest {
 
             // then
             assertThat(result).isFalse();
+        }
+
+        @Test
+        @DisplayName("ConnectException이면 true 반환")
+        void givenConnectException_whenIsRetryable_thenReturnsTrue() {
+            // given
+            ConnectException ex = new ConnectException("Connection refused");
+
+            // when
+            boolean result = classifier.isRetryable(ex);
+
+            // then
+            assertThat(result).isTrue();
+        }
+
+        @Test
+        @DisplayName("SocketException이면 true 반환")
+        void givenSocketException_whenIsRetryable_thenReturnsTrue() {
+            // given
+            SocketException ex = new SocketException("Socket closed");
+
+            // when
+            boolean result = classifier.isRetryable(ex);
+
+            // then
+            assertThat(result).isTrue();
+        }
+
+        @Test
+        @DisplayName("SocketTimeoutException이면 true 반환")
+        void givenSocketTimeoutException_whenIsRetryable_thenReturnsTrue() {
+            // given
+            SocketTimeoutException ex = new SocketTimeoutException("Read timed out");
+
+            // when
+            boolean result = classifier.isRetryable(ex);
+
+            // then
+            assertThat(result).isTrue();
+        }
+
+        @Test
+        @DisplayName("래핑된 ConnectException도 true 반환")
+        void givenWrappedConnectException_whenIsRetryable_thenReturnsTrue() {
+            // given
+            ConnectException connectEx = new ConnectException("Connection refused");
+            SQLException sqlEx = new SQLException("Connection error", (String) null, connectEx);
+            RuntimeException wrapper = new RuntimeException("Wrapper", sqlEx);
+
+            // when
+            boolean result = classifier.isRetryable(wrapper);
+
+            // then
+            assertThat(result).isTrue();
         }
 
         @ParameterizedTest

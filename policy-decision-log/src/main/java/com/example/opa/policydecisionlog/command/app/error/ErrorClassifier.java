@@ -2,6 +2,9 @@ package com.example.opa.policydecisionlog.command.app.error;
 
 import org.springframework.stereotype.Component;
 
+import java.net.ConnectException;
+import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.sql.SQLException;
 import java.util.Set;
 
@@ -24,11 +27,28 @@ public class ErrorClassifier {
     );
 
     public boolean isRetryable(Throwable ex) {
+        if (hasNetworkException(ex)) {
+            return true;
+        }
+
         SQLException sqlException = findSqlException(ex);
         if (sqlException == null) {
             return false;
         }
         return isRetryableSqlState(sqlException.getSQLState());
+    }
+
+    private boolean hasNetworkException(Throwable ex) {
+        Throwable current = ex;
+        while (current != null) {
+            if (current instanceof ConnectException
+                    || current instanceof SocketException
+                    || current instanceof SocketTimeoutException) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 
     private boolean isRetryableSqlState(String sqlState) {
@@ -45,7 +65,13 @@ public class ErrorClassifier {
         Throwable current = ex;
         while (current != null) {
             if (current instanceof SQLException sqlException) {
-                return sqlException;
+                SQLException next = sqlException.getNextException();
+                if (next != null && next.getSQLState() != null) {
+                    return next;
+                }
+                if (sqlException.getSQLState() != null) {
+                    return sqlException;
+                }
             }
             current = current.getCause();
         }
