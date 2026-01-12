@@ -8,7 +8,6 @@ import com.example.opa.policydecisionlog.shared.metrics.DecisionLogMetrics;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -24,13 +23,11 @@ public class PersistDecisionLogUseCase {
     private final ErrorHandler errorHandler;
     private final DecisionLogMetrics metrics;
 
-    @Transactional
     public PersistResult execute(List<DecisionLogIngestCommand> commands) {
         log.debug("Persisting {} decision log(s) to database", commands.size());
         return saveWithRetry(commands);
     }
 
-    @Transactional
     public PersistResult executeRecovery(DecisionLogIngestCommand command, int attempt) {
         log.debug("Recovery persisting decision log to database: decisionId={}, attempt={}",
                 command.decisionId(), attempt);
