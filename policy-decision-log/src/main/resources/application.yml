@@ -18,6 +18,13 @@ spring:
     username: opa
     password: opa
     driver-class-name: org.postgresql.Driver
+    hikari:
+      connection-timeout: 3000
+      validation-timeout: 1000
+      max-lifetime: 1800000
+      idle-timeout: 600000
+      minimum-idle: 0
+      maximum-pool-size: 10
 
   jpa:
     hibernate:
