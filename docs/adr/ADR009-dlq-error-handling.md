@@ -73,10 +73,16 @@ compositeErrorHandler
   - 57014: Query canceled (timeout)
   - 53300: Too many connections
   - 57Pxx: Admin/crash shutdown
+  - 네트워크 예외: `ConnectException`, `SocketException`, `SocketTimeoutException`
 - Non-retryable (데이터 에러): Bisect로 문제 레코드 탐색 후 DLQ 직접 전송
   - 배치를 반씩 나눠가며 실패 레코드만 격리
   - 정상 레코드는 저장 성공
   - 실패 레코드는 `parkingLotPublisher.toDlq()`로 직접 DLQ 전송
+
+#### BatchUpdateException 처리
+- JDBC 배치 실행 시 `BatchUpdateException`이 발생할 수 있음
+- 실제 원인은 `getNextException()`을 통해 추출
+- cause chain의 `getCause()`가 아닌 `getNextException()`에서 SQLState 확인
 
 #### Kafka 에러 핸들러 (Composite)
 - `KafkaInfraException` 발생 시: `infraErrorHandler` 처리

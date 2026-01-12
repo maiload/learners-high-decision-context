@@ -26,7 +26,25 @@ Jackson 기본 설정 기준 JSON 데이터는 대략 70~80% 수준으로 압축
 - 이를 바탕으로 압축된 payload 기준 최대 크기를 약 1MB 수준으로 설정
 - [Reducing JSON Data Size](https://www.baeldung.com/json-reduce-data-size#bd-conclusion)
 
-## 4. Kafka Consumer Configuration
+## 4. HikariCP Configuration
+- DB 장애 시 빠른 실패를 위해 connection-timeout 설정 필요
+- 기본값(30초)은 너무 길어서 Consumer 처리가 지연됨
+- 짧은 timeout으로 빠르게 실패 → Parking Lot으로 전송 → 다음 배치 처리
+
+### 주요 설정
+```yaml
+spring:
+  datasource:
+    hikari:
+      connection-timeout: 3000   # 커넥션 획득 대기 시간 (3초)
+      validation-timeout: 1000   # 커넥션 유효성 검사 시간 (1초)
+      max-lifetime: 1800000      # 커넥션 최대 수명 (30분)
+      idle-timeout: 600000       # 유휴 커넥션 유지 시간 (10분)
+      minimum-idle: 0            # 최소 유휴 커넥션 (0: 필요시 생성)
+      maximum-pool-size: 10      # 최대 풀 크기
+```
+
+## 5. Kafka Consumer Configuration
 - Spring Kafka의 Batch Listener를 사용하여 배치 단위로 메시지 소비
 - `AckMode.MANUAL` 사용으로 명시적 offset 커밋 제어
 - 에러 처리 완료 후에만 ack하여 메시지 유실 방지
@@ -54,7 +72,7 @@ opa:
       max-elapsed-time-ms: 30000  # 최대 재시도 시간
 ```
 
-## 5. Batch Processing Flow (Command)
+## 6. Batch Processing Flow (Command)
 - HTTP API로 수신된 Decision Log는 Kafka 토픽으로 발행
 - Kafka Consumer가 배치 단위로 소비하여 DB에 raw JSON 저장
 
@@ -84,7 +102,7 @@ public void saveAll(List<DecisionLogIngestCommand> commands) {
 }
 ```
 
-## 6. DecisionContext Extraction (Query)
+## 7. DecisionContext Extraction (Query)
 - **조회 시점**에 raw JSON에서 DecisionContext 추출
 - Strategy + Registry 패턴으로 서비스별 추출 로직 분리
 

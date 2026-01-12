@@ -143,8 +143,10 @@ query/infra/
 - 에러 유형에 따라 다른 처리 전략 적용 (ADR009 참조)
 
 ### 에러 분류 (ErrorClassifier)
-- **Retryable**: SQLException의 SQLState 기반 판단
-  - 08xxx (Connection), 40P01 (Deadlock), 55P03 (Lock), 57014 (Timeout)
+- **Retryable**: 다음 조건 중 하나라도 해당하면 Retryable로 판단
+  - 네트워크 예외: `ConnectException`, `SocketException`, `SocketTimeoutException`
+  - SQLException의 SQLState: 08xxx (Connection), 40P01 (Deadlock), 55P03 (Lock), 57014 (Timeout)
+  - `BatchUpdateException`의 경우 `getNextException()`으로 실제 원인 추출
   - → Parking Lot으로 이동, 지수 백오프로 재시도
 - **Non-Retryable**: 데이터 에러, 파싱 에러
   - → Bisect 알고리즘으로 실패 레코드 식별 후 DLQ 이동
