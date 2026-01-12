@@ -302,6 +302,35 @@ http://localhost:3000
 
 ---
 
+## 부하 테스트 결과
+
+k6를 사용하여 초당 1,000건의 요청을 1분간 전송하는 부하 테스트를 수행했습니다.
+
+### 테스트 환경
+- **도구**: k6 (constant-arrival-rate executor)
+- **부하**: 1,000 req/s × 60초
+- **페이로드**: gzip 압축된 Decision Log (1~5건 배치)
+
+### 정상 케이스
+
+![정상 케이스 모니터링](docs/image/load-test-normal.png)
+
+- **Ingest TPS**: 약 1,000 req/s 안정적 처리
+- **DB Save TPS**: Kafka 배치 처리로 효율적 저장
+- **E2E Latency**: 수신~저장 지연 시간 안정적 유지
+- **DLQ/Parking**: 에러 없이 정상 처리
+
+### DB 장애 케이스
+
+![DB 장애 케이스 모니터링](docs/image/load-test-db-failure.png)
+
+- **DB 다운 시**: HikariCP 3초 타임아웃 후 빠르게 실패
+- **Parking Lot**: 인프라 에러로 분류되어 Parking 토픽으로 전송
+- **DB 복구 후**: Parking Lot Consumer가 지수 백오프로 자동 재처리
+- **데이터 유실 없음**: 모든 레코드가 Parking → DB로 복구됨
+
+---
+
 ## 참고 자료
 
 - [OPA Decision Log](https://www.openpolicyagent.org/docs/latest/decision-logs/)
